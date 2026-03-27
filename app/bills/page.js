@@ -1,22 +1,26 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 
-const STATE_OPTIONS = [
-  { value: 'NE', label: 'Nebraska' },
-  { value: 'US', label: 'U.S. Congress' },
-  { value: 'CA', label: 'California' },
-  { value: 'TX', label: 'Texas' },
-  { value: 'NY', label: 'New York' },
-  { value: 'CO', label: 'Colorado' },
-  { value: 'FL', label: 'Florida' },
-  { value: 'IL', label: 'Illinois' },
-];
+const STATE_NAMES = {
+  US: 'U.S. Congress', AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas',
+  CA: 'California', CO: 'Colorado', CT: 'Connecticut', DE: 'Delaware', FL: 'Florida',
+  GA: 'Georgia', HI: 'Hawaii', ID: 'Idaho', IL: 'Illinois', IN: 'Indiana',
+  IA: 'Iowa', KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana', ME: 'Maine',
+  MD: 'Maryland', MA: 'Massachusetts', MI: 'Michigan', MN: 'Minnesota', MS: 'Mississippi',
+  MO: 'Missouri', MT: 'Montana', NE: 'Nebraska', NV: 'Nevada', NH: 'New Hampshire',
+  NJ: 'New Jersey', NM: 'New Mexico', NY: 'New York', NC: 'North Carolina', ND: 'North Dakota',
+  OH: 'Ohio', OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania', RI: 'Rhode Island',
+  SC: 'South Carolina', SD: 'South Dakota', TN: 'Tennessee', TX: 'Texas', UT: 'Utah',
+  VT: 'Vermont', VA: 'Virginia', WA: 'Washington', WV: 'West Virginia', WI: 'Wisconsin',
+  WY: 'Wyoming', DC: 'Washington D.C.',
+};
 
 export default function BillsPage() {
   const [search, setSearch] = useState('');
-  const [state, setState] = useState('NE');
+  const [trackedJurisdictions, setTrackedJurisdictions] = useState([]);
+  const [activeStates, setActiveStates] = useState([]);
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -24,24 +28,54 @@ export default function BillsPage() {
   const [source, setSource] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
 
-  const fetchBills = useCallback(async (searchQuery, stateCode) => {
+  // Load tracked jurisdictions from settings
+  useEffect(() => {
+    fetch('/api/settings')
+      .then(r => r.json())
+      .then(data => {
+        const tracked = data.trackedJurisdictions || [];
+        setTrackedJurisdictions(tracked);
+        setActiveStates(tracked); // Start with all selected
+      })
+      .catch(() => {});
+  }, []);
+
+  const fetchBills = useCallback(async (searchQuery, stateCodes) => {
+    if (stateCodes.length === 0) {
+      setBills([]);
+      setTotal(0);
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
-      const params = new URLSearchParams({ state: stateCode });
-      if (searchQuery.trim()) params.set('search', searchQuery.trim());
+      // Fetch from all active states in parallel
+      const fetches = stateCodes.map(async (stateCode) => {
+        const params = new URLSearchParams({ state: stateCode });
+        if (searchQuery.trim()) params.set('search', searchQuery.trim());
 
-      const res = await fetch(`/api/bills?${params.toString()}`);
-      const data = await res.json();
+        const res = await fetch(`/api/bills?${params.toString()}`);
+        const data = await res.json();
+        if (data.error) return { bills: [], total: 0, state: stateCode, error: data.error };
+        return {
+          bills: (data.bills || []).map(b => ({ ...b, jurisdiction: stateCode })),
+          total: data.total || 0,
+          source: data.source || '',
+          state: stateCode,
+        };
+      });
 
-      if (data.error) {
-        setError(data.error);
-        setBills([]);
-      } else {
-        setBills(data.bills || []);
-        setTotal(data.total || 0);
-        setSource(data.source || '');
-      }
+      const results = await Promise.all(fetches);
+      const allBills = results.flatMap(r => r.bills);
+      const totalCount = results.reduce((sum, r) => sum + r.total, 0);
+      const errors = results.filter(r => r.error).map(r => `${r.state}: ${r.error}`);
+      const src = results.find(r => r.source)?.source || '';
+
+      setBills(allBills);
+      setTotal(totalCount);
+      setSource(src);
+      if (errors.length > 0) setError(errors.join('; '));
       setHasSearched(true);
     } catch (err) {
       setError('Failed to fetch bills. Check your connection and API key.');
@@ -51,14 +85,25 @@ export default function BillsPage() {
     }
   }, []);
 
-  // Load master list on mount and when state changes
+  // Initial load: wait for settings, then fetch
+  const initialLoadDone = useRef(false);
   useEffect(() => {
-    fetchBills('', state);
-  }, [state, fetchBills]);
+    if (activeStates.length > 0 && !initialLoadDone.current) {
+      initialLoadDone.current = true;
+      fetchBills('', activeStates);
+    }
+  }, [activeStates, fetchBills]);
 
   const handleSearch = (e) => {
-    e.preventDefault();
-    fetchBills(search, state);
+    if (e) e.preventDefault();
+    fetchBills(search, activeStates);
+  };
+
+  const toggleState = (code) => {
+    setActiveStates(prev => {
+      const next = prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code];
+      return next;
+    });
   };
 
   return (
@@ -75,7 +120,50 @@ export default function BillsPage() {
         </div>
       ) : null}
 
-      <form onSubmit={handleSearch} className="filter-bar fade-in">
+      {/* Jurisdiction toggle buttons */}
+      <div className="filter-bar fade-in" style={{ gap: 'var(--space-2)', flexWrap: 'wrap', alignItems: 'center' }}>
+        <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', marginRight: 'var(--space-2)' }}>
+          Jurisdictions:
+        </span>
+        {trackedJurisdictions.map(code => {
+          const isActive = activeStates.includes(code);
+          return (
+            <button
+              key={code}
+              onClick={() => toggleState(code)}
+              style={{
+                fontSize: 'var(--text-sm)',
+                padding: 'var(--space-1) var(--space-3)',
+                borderRadius: 'var(--radius-md)',
+                border: isActive ? '1px solid var(--accent)' : '1px dashed var(--border)',
+                background: isActive ? 'var(--accent)' : 'transparent',
+                color: isActive ? '#fff' : 'var(--text-muted)',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                fontWeight: isActive ? 600 : 400,
+                opacity: isActive ? 1 : 0.6,
+              }}
+            >
+              {isActive ? '✓ ' : ''}{STATE_NAMES[code] || code}
+            </button>
+          );
+        })}
+        {trackedJurisdictions.length > 1 && (
+          <>
+            <span style={{ color: 'var(--border)', margin: '0 var(--space-1)' }}>|</span>
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => setActiveStates([...trackedJurisdictions])}
+              style={{ fontSize: 'var(--text-xs)' }}
+            >
+              All
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Search bar */}
+      <form onSubmit={handleSearch} className="filter-bar fade-in" style={{ marginTop: 'var(--space-2)' }}>
         <div className="search-bar" style={{ flex: 1, maxWidth: 500 }}>
           <span className="search-icon">🔍</span>
           <input
@@ -87,23 +175,13 @@ export default function BillsPage() {
           />
         </div>
 
-        <select
-          className="filter-select"
-          value={state}
-          onChange={(e) => setState(e.target.value)}
-        >
-          {STATE_OPTIONS.map((s) => (
-            <option key={s.value} value={s.value}>{s.label}</option>
-          ))}
-        </select>
-
-        <button type="submit" className="btn btn-primary" disabled={loading}>
+        <button type="submit" className="btn btn-primary" disabled={loading || activeStates.length === 0}>
           {loading ? 'Searching...' : 'Search'}
         </button>
 
         {hasSearched && !loading ? (
           <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
-            {total} bills {source === 'masterlist' ? `(showing ${bills.length})` : 'found'}
+            {total.toLocaleString()} bills {activeStates.length > 1 ? `across ${activeStates.length} jurisdictions` : ''} {source === 'masterlist' ? `(showing ${bills.length})` : 'found'}
           </span>
         ) : null}
       </form>
@@ -120,6 +198,7 @@ export default function BillsPage() {
               <tr>
                 <th>Bill</th>
                 <th>Title</th>
+                {activeStates.length > 1 ? <th>State</th> : null}
                 <th>Status</th>
                 <th>Last Action</th>
                 <th></th>
@@ -128,13 +207,20 @@ export default function BillsPage() {
             <tbody>
               {bills.length > 0 ? (
                 bills.map((bill) => (
-                  <tr key={bill.id}>
+                  <tr key={`${bill.jurisdiction || ''}-${bill.id}`}>
                     <td>
                       <Link href={`/bills/${bill.id}`} className="bill-number">
                         {bill.number}
                       </Link>
                     </td>
                     <td className="bill-title">{bill.title}</td>
+                    {activeStates.length > 1 ? (
+                      <td>
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', background: 'var(--bg-tertiary)', padding: '2px 6px', borderRadius: 'var(--radius-sm)' }}>
+                          {bill.jurisdiction}
+                        </span>
+                      </td>
+                    ) : null}
                     <td>
                       <span className="badge badge-status">{bill.status}</span>
                     </td>
@@ -153,11 +239,11 @@ export default function BillsPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5}>
+                  <td colSpan={activeStates.length > 1 ? 6 : 5}>
                     <div className="empty-state">
                       <div className="empty-state-icon">🔍</div>
-                      <h3>{hasSearched ? 'No bills found' : 'Loading...'}</h3>
-                      <p>{hasSearched ? 'Try a different search term or select another state.' : 'Fetching bills from LegiScan...'}</p>
+                      <h3>{activeStates.length === 0 ? 'No jurisdictions selected' : hasSearched ? 'No bills found' : 'Loading...'}</h3>
+                      <p>{activeStates.length === 0 ? 'Select a jurisdiction above to browse bills.' : hasSearched ? 'Try a different search term or select another jurisdiction.' : 'Fetching bills from LegiScan...'}</p>
                     </div>
                   </td>
                 </tr>
