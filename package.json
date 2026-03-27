@@ -9,9 +9,14 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "diff": "^8.0.4",
+    "knex": "^3.2.6",
     "next": "16.2.1",
+    "node-cron": "^4.2.1",
+    "pg": "^8.20.0",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "eslint": "^9",

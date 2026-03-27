@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Legislative Tracker — Executive Summary</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: #1a1a2e;
+    line-height: 1.6;
+    padding: 60px 72px;
+    max-width: 900px;
+    margin: 0 auto;
+    background: #fff;
+  }
+
+  .header {
+    border-bottom: 3px solid #2d3561;
+    padding-bottom: 24px;
+    margin-bottom: 40px;
+  }
+
+  .header h1 {
+    font-size: 32px;
+    font-weight: 700;
+    color: #2d3561;
+    letter-spacing: -0.5px;
+  }
+
+  .header .subtitle {
+    font-size: 16px;
+    color: #6b7280;
+    margin-top: 6px;
+    font-weight: 400;
+  }
+
+  .header .date {
+    font-size: 13px;
+    color: #9ca3af;
+    margin-top: 4px;
+  }
+
+  h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #2d3561;
+    margin-top: 36px;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #374151;
+    margin-top: 20px;
+    margin-bottom: 8px;
+  }
+
+  p {
+    font-size: 14px;
+    margin-bottom: 12px;
+    color: #374151;
+  }
+
+  ul {
+    margin-bottom: 12px;
+    padding-left: 20px;
+  }
+
+  li {
+    font-size: 14px;
+    color: #374151;
+    margin-bottom: 6px;
+  }
+
+  .highlight-box {
+    background: #f0f4ff;
+    border-left: 4px solid #2d3561;
+    padding: 16px 20px;
+    margin: 20px 0;
+    border-radius: 0 8px 8px 0;
+  }
+
+  .highlight-box p {
+    margin-bottom: 0;
+    font-size: 14px;
+    color: #1e293b;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0 24px 0;
+    font-size: 13px;
+  }
+
+  th {
+    background: #2d3561;
+    color: #fff;
+    text-align: left;
+    padding: 10px 14px;
+    font-weight: 600;
+  }
+
+  th:first-child { border-radius: 6px 0 0 0; }
+  th:last-child { border-radius: 0 6px 0 0; }
+
+  td {
+    padding: 10px 14px;
+    border-bottom: 1px solid #e5e7eb;
+    color: #374151;
+  }
+
+  tr:nth-child(even) td { background: #f9fafb; }
+
+  .phase-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .phase-1 { background: #2d3561; }
+  .phase-2 { background: #4a69bd; }
+  .phase-3 { background: #6a89cc; }
+  .phase-4 { background: #1e8449; }
+  .phase-5 { background: #7d3c98; }
+
+  .tech-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 16px 0 24px 0;
+  }
+
+  .tech-item {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+
+  .tech-item strong {
+    font-size: 13px;
+    color: #2d3561;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  .tech-item span {
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  .footer {
+    margin-top: 48px;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
+    font-size: 12px;
+    color: #9ca3af;
+    text-align: center;
+  }
+
+  @media print {
+    body { padding: 40px 48px; }
+    .header { page-break-after: avoid; }
+    h2 { page-break-after: avoid; }
+    table { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Legislative Document Monitor</h1>
+  <div class="subtitle">Executive Summary — Project Scope & Architecture</div>
+  <div class="date">March 26, 2026</div>
+</div>
+
+<h2>Project Overview</h2>
+<p>
+  The Legislative Document Monitor is a web application designed to track, analyze, and respond to
+  legislative activity across all 50 U.S. state legislatures and the U.S. Congress. The system provides
+  real-time monitoring of bills and resolutions, automatic detection of document changes through diff
+  comparison, and a suite of civic engagement tools for annotation, markup, and testimony preparation.
+</p>
+
+<div class="highlight-box">
+  <p>
+    <strong>Mission:</strong> Empower users to stay informed on legislative changes, organize their
+    analysis, and produce actionable feedback for legislators — all through deterministic,
+    non-AI-dependent processing.
+  </p>
+</div>
+
+<h2>Core Capabilities</h2>
+<ul>
+  <li><strong>Bill Monitoring & Diffing</strong> — Ingest bill text from official APIs, store versioned snapshots, and compute line-by-line diffs to instantly surface what changed between versions.</li>
+  <li><strong>Watchlists & Position Tracking</strong> — Flag specific bills with a position stance (Support, Oppose, Watch, Neutral) and receive alerts when they're updated.</li>
+  <li><strong>Keyword Monitoring</strong> — Define terms to watch for across all ingested legislation. Automatic matching with contextual snippets.</li>
+  <li><strong>Inline Annotations & Comment Chains</strong> — Select specific language in bill text and attach threaded discussion comments for analysis and review.</li>
+  <li><strong>Legislative Markup & Redlining</strong> — Highlight, strikethrough, and suggest alternative language directly on bill text. Export as formatted documents for legislator feedback.</li>
+  <li><strong>Testimony Drafting</strong> — Structured workspace for composing written testimony linked to specific bill sections.</li>
+  <li><strong>Legislative Calendar</strong> — Track hearing dates, committee schedules, and floor votes.</li>
+  <li><strong>Legislator Directory</strong> — Searchable sponsor database with contact information and sponsored legislation.</li>
+  <li><strong>Email Digests</strong> — Configurable daily or weekly email summaries of changes, matches, and upcoming events.</li>
+  <li><strong>Cross-Bill Comparison</strong> — Side-by-side comparison of different bills from any jurisdictions.</li>
+  <li><strong>Shareable Views</strong> — Generate read-only links to annotated bill views for coordination with others.</li>
+</ul>
+
+<h2>Data Sources</h2>
+<table>
+  <tr>
+    <th>Source</th>
+    <th>Coverage</th>
+    <th>Cost</th>
+    <th>Data Format</th>
+  </tr>
+  <tr>
+    <td><strong>LegiScan API</strong> (Primary)</td>
+    <td>All 50 states + U.S. Congress</td>
+    <td>Free tier: 30,000 queries/month</td>
+    <td>Structured JSON</td>
+  </tr>
+  <tr>
+    <td><strong>Congress.gov API</strong> (Secondary)</td>
+    <td>U.S. Congress (federal only)</td>
+    <td>Free with API key</td>
+    <td>JSON / XML</td>
+  </tr>
+</table>
+<p>
+  API keys are managed through an in-app Settings page and stored securely in the database.
+  No AI or machine learning services are used — all processing (diffing, keyword matching,
+  alerting) is handled by deterministic algorithms.
+</p>
+
+<h2>Technology Stack</h2>
+<div class="tech-grid">
+  <div class="tech-item">
+    <strong>Frontend</strong>
+    <span>Vite + React</span>
+  </div>
+  <div class="tech-item">
+    <strong>Backend</strong>
+    <span>Express.js (Node.js)</span>
+  </div>
+  <div class="tech-item">
+    <strong>Database</strong>
+    <span>PostgreSQL</span>
+  </div>
+  <div class="tech-item">
+    <strong>Migrations</strong>
+    <span>Knex.js</span>
+  </div>
+  <div class="tech-item">
+    <strong>Scheduling</strong>
+    <span>node-cron</span>
+  </div>
+  <div class="tech-item">
+    <strong>Diffing</strong>
+    <span>diff (npm)</span>
+  </div>
+  <div class="tech-item">
+    <strong>Email</strong>
+    <span>Nodemailer (SMTP)</span>
+  </div>
+  <div class="tech-item">
+    <strong>PDF Export</strong>
+    <span>PDFKit / Puppeteer</span>
+  </div>
+</div>
+
+<h2>Development Roadmap</h2>
+<table>
+  <tr>
+    <th>Phase</th>
+    <th>Focus</th>
+    <th>Key Deliverables</th>
+  </tr>
+  <tr>
+    <td><span class="phase-badge phase-1">Phase 1</span></td>
+    <td><strong>Foundation (MVP)</strong></td>
+    <td>Bill ingestion, diff engine, watchlists, dashboard, settings page, cron scheduler</td>
+  </tr>
+  <tr>
+    <td><span class="phase-badge phase-2">Phase 2</span></td>
+    <td><strong>Engagement</strong></td>
+    <td>Inline annotations, comment chains, tags, collections, keyword matching, alerts system</td>
+  </tr>
+  <tr>
+    <td><span class="phase-badge phase-3">Phase 3</span></td>
+    <td><strong>Advocacy</strong></td>
+    <td>Markup/redlining tools, PDF export, testimony workspace, status pipeline, Congress.gov API</td>
+  </tr>
+  <tr>
+    <td><span class="phase-badge phase-4">Phase 4</span></td>
+    <td><strong>Awareness</strong></td>
+    <td>Legislative calendar, email digest service, legislator directory, bill relationship mapping</td>
+  </tr>
+  <tr>
+    <td><span class="phase-badge phase-5">Phase 5</span></td>
+    <td><strong>Collaboration</strong></td>
+    <td>Cross-bill comparison, shareable links, multi-user support, responsive polish</td>
+  </tr>
+</table>
+
+<h2>Architecture Summary</h2>
+<p>
+  The system follows a standard client-server architecture. The React frontend communicates with the
+  Express.js backend via REST API. The backend manages a PostgreSQL database containing 22 tables
+  spanning bill data, version history, diffs, user annotations, markups, testimony drafts, legislator
+  records, calendar events, and configuration settings.
+</p>
+<p>
+  A built-in cron scheduler periodically polls the LegiScan and Congress.gov APIs to ingest new
+  bills, detect version changes, compute diffs, and trigger alerts. An email digest service
+  delivers configurable summaries via SMTP.
+</p>
+
+<h2>Key Design Principles</h2>
+<ul>
+  <li><strong>No AI Dependency</strong> — All processing is deterministic. Diffing uses standard text comparison algorithms; keyword matching uses exact and pattern-based search; alerting follows rule-based triggers.</li>
+  <li><strong>API-First Data</strong> — Relies on structured API data from official sources (LegiScan, Congress.gov) rather than fragile web scraping.</li>
+  <li><strong>Self-Hosted & Configurable</strong> — API keys, polling intervals, and email settings are managed through the app's Settings page. The instance is fully self-contained.</li>
+  <li><strong>Civic Engagement Focus</strong> — Goes beyond passive monitoring with annotation, markup, testimony, and export tools designed for real legislative advocacy workflows.</li>
+</ul>
+
+<div class="footer">
+  Legislative Document Monitor — Executive Summary — March 2026
+</div>
+
+</body>
+</html>
