@@ -48,6 +48,11 @@ export default function SettingsPage() {
             <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-1)', display: 'block' }}>
               Free tier: 30,000 queries/month. Covers all 50 states + U.S. Congress.
             </span>
+            <div style={{ display: 'flex', gap: 'var(--space-4)', marginTop: 'var(--space-2)', fontSize: 'var(--text-xs)' }}>
+              <a href="https://legiscan.com/user/register" target="_blank" rel="noopener noreferrer">🔗 Register for API Key</a>
+              <a href="https://legiscan.com/legiscan" target="_blank" rel="noopener noreferrer">📖 API Documentation</a>
+              <a href="https://legiscan.com" target="_blank" rel="noopener noreferrer">🌐 LegiScan.com</a>
+            </div>
           </div>
 
           <div className="input-group">
@@ -72,6 +77,11 @@ export default function SettingsPage() {
             <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-1)', display: 'block' }}>
               Official Library of Congress API. Federal bills, amendments, and summaries.
             </span>
+            <div style={{ display: 'flex', gap: 'var(--space-4)', marginTop: 'var(--space-2)', fontSize: 'var(--text-xs)' }}>
+              <a href="https://api.congress.gov/sign-up/" target="_blank" rel="noopener noreferrer">🔗 Register for API Key</a>
+              <a href="https://api.congress.gov" target="_blank" rel="noopener noreferrer">📖 API Documentation</a>
+              <a href="https://congress.gov" target="_blank" rel="noopener noreferrer">🌐 Congress.gov</a>
+            </div>
           </div>
         </div>
 
