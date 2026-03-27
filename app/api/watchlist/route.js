@@ -1,22 +1,36 @@
 import { NextResponse } from 'next/server';
+import { getWatchlist, addToWatchlist, removeFromWatchlist, updateWatchlistPosition } from '@/lib/store';
 
-// GET /api/watchlist — list watchlist items
+// GET /api/watchlist
 export async function GET() {
-  // TODO: query PostgreSQL
-  return NextResponse.json({ items: [], total: 0 });
+  const items = getWatchlist();
+  return NextResponse.json({ items, total: items.length });
 }
 
 // POST /api/watchlist — add bill to watchlist
 export async function POST(request) {
   const body = await request.json();
-  // TODO: insert into PostgreSQL
-  return NextResponse.json({ success: true, item: body }, { status: 201 });
+  const list = addToWatchlist({
+    billId: body.billId,
+    billNumber: body.billNumber,
+    title: body.title,
+    jurisdiction: body.jurisdiction,
+    position: body.position || 'watch',
+  });
+  return NextResponse.json({ success: true, items: list }, { status: 201 });
 }
 
-// DELETE /api/watchlist — remove bill from watchlist
+// PUT /api/watchlist — update position
+export async function PUT(request) {
+  const body = await request.json();
+  const list = updateWatchlistPosition(body.billId, body.position);
+  return NextResponse.json({ success: true, items: list });
+}
+
+// DELETE /api/watchlist
 export async function DELETE(request) {
   const { searchParams } = new URL(request.url);
   const billId = searchParams.get('billId');
-  // TODO: delete from PostgreSQL
-  return NextResponse.json({ success: true, billId });
+  const list = removeFromWatchlist(billId);
+  return NextResponse.json({ success: true, items: list });
 }

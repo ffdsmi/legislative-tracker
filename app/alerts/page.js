@@ -1,116 +1,124 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-const DEMO_ALERTS = [
-  { id: 1, type: 'change', billNumber: 'HR 1234', message: 'New committee amendment version available for HR 1234', isRead: false, createdAt: '2026-03-26 14:30' },
-  { id: 2, type: 'keyword', billNumber: 'SB 890', keyword: 'data privacy', message: 'Keyword "data privacy" matched in SB 890 — Data Privacy and Consumer Protection Act', isRead: false, createdAt: '2026-03-26 12:15' },
-  { id: 3, type: 'change', billNumber: 'LB 567', message: 'Status changed: LB 567 moved from "Introduced" to "In Committee"', isRead: false, createdAt: '2026-03-25 16:45' },
-  { id: 4, type: 'keyword', billNumber: 'HR 2345', keyword: 'cybersecurity', message: 'Keyword "cybersecurity" matched in HR 2345 — Federal Cybersecurity Enhancement Act', isRead: true, createdAt: '2026-03-25 10:00' },
-  { id: 5, type: 'new', billNumber: 'LB 789', message: 'New bill matching keyword "property tax": LB 789 — Property Tax Exemption Amendment', isRead: true, createdAt: '2026-03-24 09:30' },
+const FILTER_TABS = [
+  { value: 'all', label: 'All' },
+  { value: 'unread', label: 'Unread' },
+  { value: 'change', label: 'Changes' },
+  { value: 'keyword', label: 'Keywords' },
 ];
 
-const ALERT_ICONS = {
-  change: '📝',
-  keyword: '🔍',
-  new: '🆕',
-};
-
 export default function AlertsPage() {
-  const [alerts, setAlerts] = useState(DEMO_ALERTS);
+  const [alerts, setAlerts] = useState([]);
   const [filter, setFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
 
-  const unreadCount = alerts.filter((a) => !a.isRead).length;
+  useEffect(() => {
+    fetch('/api/alerts')
+      .then(r => r.json())
+      .then(data => {
+        setAlerts(data.alerts || []);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
-  const filteredAlerts = alerts.filter((alert) => {
-    if (filter === 'unread') return !alert.isRead;
-    if (filter === 'changes') return alert.type === 'change';
-    if (filter === 'keywords') return alert.type === 'keyword';
+  const handleMarkRead = async (id) => {
+    await fetch('/api/alerts', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    setAlerts(prev => prev.map(a => a.id === id ? { ...a, read: true } : a));
+  };
+
+  const handleMarkAllRead = async () => {
+    await fetch('/api/alerts', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ all: true }),
+    });
+    setAlerts(prev => prev.map(a => ({ ...a, read: true })));
+  };
+
+  const filtered = alerts.filter(a => {
+    if (filter === 'unread') return !a.read;
+    if (filter === 'change') return a.type === 'change';
+    if (filter === 'keyword') return a.type === 'keyword';
     return true;
   });
 
-  const markAsRead = (id) => {
-    setAlerts((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, isRead: true } : a))
-    );
-  };
-
-  const markAllRead = () => {
-    setAlerts((prev) => prev.map((a) => ({ ...a, isRead: true })));
-  };
+  const unreadCount = alerts.filter(a => !a.read).length;
 
   return (
     <>
-      <div className="page-header fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <h1>Alerts</h1>
-          <p>{unreadCount} unread notifications</p>
+      <div className="page-header fade-in">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h1>Alerts</h1>
+            <p>{unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'All caught up!'}</p>
+          </div>
+          {unreadCount > 0 ? (
+            <button className="btn btn-secondary" onClick={handleMarkAllRead}>Mark All as Read</button>
+          ) : null}
         </div>
-        {unreadCount > 0 ? (
-          <button className="btn btn-secondary" onClick={markAllRead}>
-            Mark All as Read
-          </button>
-        ) : null}
       </div>
 
-      <div className="tabs fade-in">
-        {[
-          { key: 'all', label: 'All' },
-          { key: 'unread', label: `Unread (${unreadCount})` },
-          { key: 'changes', label: 'Changes' },
-          { key: 'keywords', label: 'Keywords' },
-        ].map((t) => (
+      <div className="filter-bar fade-in">
+        {FILTER_TABS.map((tab) => (
           <button
-            key={t.key}
-            className={`tab ${filter === t.key ? 'active' : ''}`}
-            onClick={() => setFilter(t.key)}
+            key={tab.value}
+            className={`tab-btn ${filter === tab.value ? 'active' : ''}`}
+            onClick={() => setFilter(tab.value)}
           >
-            {t.label}
+            {tab.label}
           </button>
         ))}
       </div>
 
-      <div style={{ display: 'grid', gap: 'var(--space-3)' }} className="stagger">
-        {filteredAlerts.length > 0 ? (
-          filteredAlerts.map((alert) => (
-            <div
-              key={alert.id}
-              className="card fade-in"
-              style={{
-                padding: 'var(--space-4) var(--space-5)',
-                borderLeft: alert.isRead ? undefined : '3px solid var(--accent-primary)',
-                opacity: alert.isRead ? 0.7 : 1,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)' }}>
-                <span style={{ fontSize: 20, marginTop: 1 }}>{ALERT_ICONS[alert.type]}</span>
+      <div className="card fade-in">
+        {loading ? (
+          <div style={{ padding: 'var(--space-8)', textAlign: 'center' }}>
+            <p style={{ color: 'var(--text-secondary)' }}>Loading alerts...</p>
+          </div>
+        ) : filtered.length > 0 ? (
+          <div className="alert-list">
+            {filtered.map((alert) => (
+              <div
+                key={alert.id}
+                className={`alert-item ${alert.read ? '' : 'unread'}`}
+                style={{ cursor: 'pointer' }}
+                onClick={() => !alert.read && handleMarkRead(alert.id)}
+              >
+                <span className="alert-icon" style={{ fontSize: 20 }}>
+                  {alert.type === 'change' ? '📝' : alert.type === 'keyword' ? '🔑' : '🔔'}
+                </span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)', marginBottom: 'var(--space-1)' }}>
-                    {alert.message}
-                  </div>
-                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-                    {alert.createdAt}
-                  </div>
+                  <strong>{alert.title}</strong>
+                  <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 2 }}>{alert.message}</p>
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                    {alert.createdAt ? new Date(alert.createdAt).toLocaleString() : ''}
+                  </span>
                 </div>
-                <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                  <Link href={`/bills/1`} className="btn btn-ghost btn-sm">View</Link>
-                  {!alert.isRead ? (
-                    <button className="btn btn-ghost btn-sm" onClick={() => markAsRead(alert.id)}>
-                      ✓ Read
-                    </button>
-                  ) : null}
-                </div>
+                {alert.billId ? (
+                  <Link
+                    href={`/bills/${alert.billId}`}
+                    className="btn btn-ghost btn-sm"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    View Bill →
+                  </Link>
+                ) : null}
               </div>
-            </div>
-          ))
+            ))}
+          </div>
         ) : (
-          <div className="card fade-in">
-            <div className="empty-state">
-              <div className="empty-state-icon">🔔</div>
-              <h3>No alerts</h3>
-              <p>You&apos;re all caught up! Alerts will appear here when bills change or keywords match.</p>
-            </div>
+          <div className="empty-state">
+            <div className="empty-state-icon">🔔</div>
+            <h3>{alerts.length === 0 ? 'No alerts yet' : 'No matching alerts'}</h3>
+            <p>{alerts.length === 0 ? 'Ingest some bills from the Dashboard to generate alerts.' : 'Try a different filter.'}</p>
           </div>
         )}
       </div>

@@ -1,29 +1,33 @@
 import { NextResponse } from 'next/server';
+import { getKeywords, addKeyword, updateKeyword, deleteKeyword } from '@/lib/store';
 
-// GET /api/keywords — list keywords
+// GET /api/keywords
 export async function GET() {
-  // TODO: query PostgreSQL
-  return NextResponse.json({ keywords: [], total: 0 });
+  const keywords = getKeywords();
+  return NextResponse.json({ keywords, total: keywords.length });
 }
 
 // POST /api/keywords — create keyword
 export async function POST(request) {
   const body = await request.json();
-  // TODO: insert into PostgreSQL
-  return NextResponse.json({ success: true, keyword: body }, { status: 201 });
+  const keyword = addKeyword({
+    term: body.term || body.keyword,
+    jurisdiction: body.jurisdiction || 'ALL',
+  });
+  return NextResponse.json({ success: true, keyword }, { status: 201 });
 }
 
-// PUT /api/keywords — update keyword
+// PUT /api/keywords — update keyword (toggle active, rename, etc.)
 export async function PUT(request) {
   const body = await request.json();
-  // TODO: update in PostgreSQL
-  return NextResponse.json({ success: true, keyword: body });
+  const list = updateKeyword(body.id, body);
+  return NextResponse.json({ success: true, keywords: list });
 }
 
-// DELETE /api/keywords — delete keyword
+// DELETE /api/keywords
 export async function DELETE(request) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
-  // TODO: delete from PostgreSQL
-  return NextResponse.json({ success: true, id });
+  const list = deleteKeyword(id);
+  return NextResponse.json({ success: true, keywords: list });
 }
