@@ -11,18 +11,25 @@ export default function BillDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
+  const [isWatched, setIsWatched] = useState(false);
 
   useEffect(() => {
     async function fetchBill() {
       try {
-        const res = await fetch(`/api/bills/${id}`);
+        const [res, watchRes] = await Promise.all([
+          fetch(`/api/bills/${id}`),
+          fetch('/api/watchlist'),
+        ]);
         const data = await res.json();
+        const watchData = await watchRes.json();
         if (data.error) {
           setError(data.error);
         } else {
           setBill(data.bill);
           setVersions(data.versions || []);
         }
+        const watched = (watchData.items || []).some(i => String(i.billId) === String(id));
+        setIsWatched(watched);
       } catch {
         setError('Failed to load bill details.');
       } finally {
@@ -67,6 +74,24 @@ export default function BillDetailPage() {
           <h1>{bill.number}</h1>
           <span className="badge badge-status">{bill.status}</span>
           <span className="badge badge-jurisdiction">{bill.jurisdiction}</span>
+          <button
+            className={`btn btn-sm ${isWatched ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={async () => {
+              if (isWatched) {
+                await fetch(`/api/watchlist?billId=${id}`, { method: 'DELETE' });
+                setIsWatched(false);
+              } else {
+                await fetch('/api/watchlist', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ billId: id, billNumber: bill.number, title: bill.title, jurisdiction: bill.jurisdiction }),
+                });
+                setIsWatched(true);
+              }
+            }}
+          >
+            {isWatched ? '✓ Watching' : '👁 Add to Watchlist'}
+          </button>
         </div>
         <p>{bill.title}</p>
         {bill.description && bill.description !== bill.title ? (

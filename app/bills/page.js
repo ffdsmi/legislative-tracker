@@ -27,17 +27,20 @@ export default function BillsPage() {
   const [total, setTotal] = useState(0);
   const [source, setSource] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
+  const [watchedIds, setWatchedIds] = useState(new Set());
 
   // Load tracked jurisdictions from settings
   useEffect(() => {
-    fetch('/api/settings')
-      .then(r => r.json())
-      .then(data => {
-        const tracked = data.trackedJurisdictions || [];
-        setTrackedJurisdictions(tracked);
-        setActiveStates(tracked); // Start with all selected
-      })
-      .catch(() => {});
+    Promise.all([
+      fetch('/api/settings').then(r => r.json()),
+      fetch('/api/watchlist').then(r => r.json()),
+    ]).then(([data, watchData]) => {
+      const tracked = data.trackedJurisdictions || [];
+      setTrackedJurisdictions(tracked);
+      setActiveStates(tracked);
+      const ids = new Set((watchData.items || []).map(i => String(i.billId)));
+      setWatchedIds(ids);
+    }).catch(() => {});
   }, []);
 
   const fetchBills = useCallback(async (searchQuery, stateCodes) => {
@@ -232,7 +235,28 @@ export default function BillsPage() {
                         </div>
                       ) : null}
                     </td>
-                    <td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      <button
+                        className={`btn btn-sm ${watchedIds.has(String(bill.id)) ? 'btn-ghost' : 'btn-secondary'}`}
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          const id = String(bill.id);
+                          if (watchedIds.has(id)) {
+                            await fetch(`/api/watchlist?billId=${bill.id}`, { method: 'DELETE' });
+                            setWatchedIds(prev => { const next = new Set(prev); next.delete(id); return next; });
+                          } else {
+                            await fetch('/api/watchlist', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ billId: bill.id, billNumber: bill.number, title: bill.title, jurisdiction: bill.jurisdiction || activeStates[0] }),
+                            });
+                            setWatchedIds(prev => new Set(prev).add(id));
+                          }
+                        }}
+                        style={{ fontSize: 'var(--text-xs)', marginRight: 'var(--space-1)' }}
+                      >
+                        {watchedIds.has(String(bill.id)) ? '✓ Watching' : '👁 Watch'}
+                      </button>
                       <Link href={`/bills/${bill.id}`} className="btn btn-ghost btn-sm">View →</Link>
                     </td>
                   </tr>
