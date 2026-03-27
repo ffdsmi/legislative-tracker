@@ -1,63 +1,87 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 
-const JURISDICTIONS = [
-  { value: '', label: 'All Jurisdictions' },
-  { value: 'US', label: 'U.S. Congress' },
+const STATE_OPTIONS = [
   { value: 'NE', label: 'Nebraska' },
+  { value: 'US', label: 'U.S. Congress' },
   { value: 'CA', label: 'California' },
   { value: 'TX', label: 'Texas' },
   { value: 'NY', label: 'New York' },
-];
-
-const STATUSES = [
-  { value: '', label: 'All Statuses' },
-  { value: 'introduced', label: 'Introduced' },
-  { value: 'committee', label: 'In Committee' },
-  { value: 'floor', label: 'Floor Vote' },
-  { value: 'passed', label: 'Passed' },
-  { value: 'signed', label: 'Signed' },
-  { value: 'vetoed', label: 'Vetoed' },
-];
-
-const DEMO_BILLS = [
-  { id: 1, number: 'HR 1234', title: 'Infrastructure Investment and Jobs Act Amendment', jurisdiction: 'U.S. Congress', status: 'In Committee', introduced: '2026-03-10', lastAction: '2026-03-24' },
-  { id: 2, number: 'LB 567', title: 'Nebraska Clean Energy Transition Act', jurisdiction: 'Nebraska', status: 'Introduced', introduced: '2026-03-15', lastAction: '2026-03-20' },
-  { id: 3, number: 'SB 890', title: 'Data Privacy and Consumer Protection Act', jurisdiction: 'California', status: 'Floor Vote', introduced: '2026-02-01', lastAction: '2026-03-25' },
-  { id: 4, number: 'HR 2345', title: 'Federal Cybersecurity Enhancement Act of 2026', jurisdiction: 'U.S. Congress', status: 'Introduced', introduced: '2026-03-22', lastAction: '2026-03-22' },
-  { id: 5, number: 'LB 123', title: 'Property Tax Reform and Relief Act', jurisdiction: 'Nebraska', status: 'In Committee', introduced: '2026-01-20', lastAction: '2026-03-18' },
+  { value: 'CO', label: 'Colorado' },
+  { value: 'FL', label: 'Florida' },
+  { value: 'IL', label: 'Illinois' },
 ];
 
 export default function BillsPage() {
   const [search, setSearch] = useState('');
-  const [jurisdiction, setJurisdiction] = useState('');
-  const [status, setStatus] = useState('');
+  const [state, setState] = useState('NE');
+  const [bills, setBills] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [total, setTotal] = useState(0);
+  const [source, setSource] = useState('');
+  const [hasSearched, setHasSearched] = useState(false);
 
-  const filteredBills = DEMO_BILLS.filter((bill) => {
-    const matchesSearch = search === '' ||
-      bill.title.toLowerCase().includes(search.toLowerCase()) ||
-      bill.number.toLowerCase().includes(search.toLowerCase());
-    const matchesJurisdiction = jurisdiction === '' || bill.jurisdiction.includes(jurisdiction);
-    const matchesStatus = status === '' || bill.status.toLowerCase().includes(status.toLowerCase());
-    return matchesSearch && matchesJurisdiction && matchesStatus;
-  });
+  const fetchBills = useCallback(async (searchQuery, stateCode) => {
+    setLoading(true);
+    setError('');
+    try {
+      const params = new URLSearchParams({ state: stateCode });
+      if (searchQuery.trim()) params.set('search', searchQuery.trim());
+
+      const res = await fetch(`/api/bills?${params.toString()}`);
+      const data = await res.json();
+
+      if (data.error) {
+        setError(data.error);
+        setBills([]);
+      } else {
+        setBills(data.bills || []);
+        setTotal(data.total || 0);
+        setSource(data.source || '');
+      }
+      setHasSearched(true);
+    } catch (err) {
+      setError('Failed to fetch bills. Check your connection and API key.');
+      setBills([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Load master list on mount and when state changes
+  useEffect(() => {
+    fetchBills('', state);
+  }, [state, fetchBills]);
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    fetchBills(search, state);
+  };
 
   return (
     <>
       <div className="page-header fade-in">
         <h1>Bill Explorer</h1>
-        <p>Search and browse bills across all tracked jurisdictions</p>
+        <p>Search and browse bills from LegiScan</p>
       </div>
 
-      <div className="filter-bar fade-in">
-        <div className="search-bar" style={{ flex: 1, maxWidth: 400 }}>
+      {error ? (
+        <div className="setup-banner fade-in">
+          <span>⚠️</span>
+          <span>{error}</span>
+        </div>
+      ) : null}
+
+      <form onSubmit={handleSearch} className="filter-bar fade-in">
+        <div className="search-bar" style={{ flex: 1, maxWidth: 500 }}>
           <span className="search-icon">🔍</span>
           <input
             type="text"
             className="input"
-            placeholder="Search by bill number or title..."
+            placeholder="Search by keyword, bill number, or topic..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -65,82 +89,82 @@ export default function BillsPage() {
 
         <select
           className="filter-select"
-          value={jurisdiction}
-          onChange={(e) => setJurisdiction(e.target.value)}
+          value={state}
+          onChange={(e) => setState(e.target.value)}
         >
-          {JURISDICTIONS.map((j) => (
-            <option key={j.value} value={j.value}>{j.label}</option>
-          ))}
-        </select>
-
-        <select
-          className="filter-select"
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-        >
-          {STATUSES.map((s) => (
+          {STATE_OPTIONS.map((s) => (
             <option key={s.value} value={s.value}>{s.label}</option>
           ))}
         </select>
 
-        <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
-          {filteredBills.length} results
-        </span>
-      </div>
+        <button type="submit" className="btn btn-primary" disabled={loading}>
+          {loading ? 'Searching...' : 'Search'}
+        </button>
+
+        {hasSearched && !loading ? (
+          <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
+            {total} bills {source === 'masterlist' ? `(showing ${bills.length})` : 'found'}
+          </span>
+        ) : null}
+      </form>
 
       <div className="card fade-in">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Bill</th>
-              <th>Title</th>
-              <th>Jurisdiction</th>
-              <th>Status</th>
-              <th>Introduced</th>
-              <th>Last Action</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredBills.length > 0 ? (
-              filteredBills.map((bill) => (
-                <tr key={bill.id}>
-                  <td>
-                    <Link href={`/bills/${bill.id}`} className="bill-number">
-                      {bill.number}
-                    </Link>
-                  </td>
-                  <td className="bill-title">{bill.title}</td>
-                  <td>
-                    <span className="badge badge-info">{bill.jurisdiction}</span>
-                  </td>
-                  <td>
-                    <span className="badge badge-status">{bill.status}</span>
-                  </td>
-                  <td style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>
-                    {bill.introduced}
-                  </td>
-                  <td style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>
-                    {bill.lastAction}
-                  </td>
-                  <td>
-                    <button className="btn btn-ghost btn-sm">+ Watch</button>
+        {loading ? (
+          <div style={{ padding: 'var(--space-8)', textAlign: 'center' }}>
+            <div style={{ fontSize: 32, marginBottom: 'var(--space-4)', animation: 'pulse 1.5s infinite' }}>📜</div>
+            <p style={{ color: 'var(--text-secondary)' }}>Fetching bills from LegiScan...</p>
+          </div>
+        ) : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Bill</th>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Last Action</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {bills.length > 0 ? (
+                bills.map((bill) => (
+                  <tr key={bill.id}>
+                    <td>
+                      <Link href={`/bills/${bill.id}`} className="bill-number">
+                        {bill.number}
+                      </Link>
+                    </td>
+                    <td className="bill-title">{bill.title}</td>
+                    <td>
+                      <span className="badge badge-status">{bill.status}</span>
+                    </td>
+                    <td style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)', maxWidth: 250 }}>
+                      <div>{bill.lastAction}</div>
+                      {bill.lastActionText ? (
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 250 }}>
+                          {bill.lastActionText}
+                        </div>
+                      ) : null}
+                    </td>
+                    <td>
+                      <Link href={`/bills/${bill.id}`} className="btn btn-ghost btn-sm">View →</Link>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5}>
+                    <div className="empty-state">
+                      <div className="empty-state-icon">🔍</div>
+                      <h3>{hasSearched ? 'No bills found' : 'Loading...'}</h3>
+                      <p>{hasSearched ? 'Try a different search term or select another state.' : 'Fetching bills from LegiScan...'}</p>
+                    </div>
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={7}>
-                  <div className="empty-state">
-                    <div className="empty-state-icon">🔍</div>
-                    <h3>No bills found</h3>
-                    <p>Try adjusting your search or filters.</p>
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
     </>
   );

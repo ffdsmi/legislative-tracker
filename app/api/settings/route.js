@@ -1,20 +1,18 @@
 import { NextResponse } from 'next/server';
+import { getSettings, saveSettings, getMaskedSettings } from '@/lib/settings';
 
-// GET /api/settings — retrieve current settings
+// GET /api/settings — retrieve current settings (keys masked)
 export async function GET() {
-  // TODO: read from PostgreSQL once DB is connected
-  const settings = {
-    legiscanApiKey: '',
-    congressApiKey: '',
-    pollInterval: 60,
-    trackedJurisdictions: ['US', 'NE'],
-  };
+  const settings = getMaskedSettings();
   return NextResponse.json(settings);
 }
 
 // PUT /api/settings — update settings
 export async function PUT(request) {
   const body = await request.json();
-  // TODO: persist to PostgreSQL
-  return NextResponse.json({ success: true, settings: body });
+  const saved = saveSettings(body);
+
+  // Return masked version so keys aren't sent back in full
+  const masked = getMaskedSettings();
+  return NextResponse.json({ success: true, settings: masked });
 }

@@ -1,17 +1,62 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function SettingsPage() {
   const [legiscanKey, setLegiscanKey] = useState('');
   const [congressKey, setCongressKey] = useState('');
   const [pollInterval, setPollInterval] = useState('60');
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [hasLegiscanKey, setHasLegiscanKey] = useState(false);
+  const [hasCongressKey, setHasCongressKey] = useState(false);
 
-  const handleSave = () => {
-    // TODO: persist settings via API
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  useEffect(() => {
+    fetch('/api/settings')
+      .then((res) => res.json())
+      .then((data) => {
+        setLegiscanKey(data.legiscanApiKey || '');
+        setCongressKey(data.congressApiKey || '');
+        setPollInterval(String(data.pollInterval || 60));
+        setHasLegiscanKey(data.hasLegiscanKey || false);
+        setHasCongressKey(data.hasCongressKey || false);
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const payload = { pollInterval: Number(pollInterval) };
+      // Only send keys if user typed a new value (not the masked placeholder)
+      if (legiscanKey && !legiscanKey.includes('••')) {
+        payload.legiscanApiKey = legiscanKey;
+      }
+      if (congressKey && !congressKey.includes('••')) {
+        payload.congressApiKey = congressKey;
+      }
+
+      const res = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSaved(true);
+        setHasLegiscanKey(data.settings.hasLegiscanKey);
+        setHasCongressKey(data.settings.hasCongressKey);
+        setLegiscanKey(data.settings.legiscanApiKey || '');
+        setCongressKey(data.settings.congressApiKey || '');
+        setTimeout(() => setSaved(false), 3000);
+      }
+    } catch (err) {
+      console.error('Failed to save settings:', err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -24,17 +69,25 @@ export default function SettingsPage() {
       <div className="settings-grid">
         <div className="settings-card fade-in">
           <h3>🔑 API Keys</h3>
-          <p>Enter your API keys to enable legislative data ingestion. Keys are stored locally and used only for API requests.</p>
+          <p>Enter your API keys to enable legislative data ingestion. Keys are stored securely on the server and masked in the UI.</p>
 
           <div className="input-group">
-            <label>LegiScan API Key</label>
+            <label>
+              LegiScan API Key
+              {hasLegiscanKey ? (
+                <span style={{ marginLeft: 'var(--space-2)', fontSize: 'var(--text-xs)', color: 'var(--color-support)' }}>✓ Configured</span>
+              ) : null}
+            </label>
             <div className="input-with-action">
               <input
                 type="password"
                 className="input"
-                placeholder="Enter your LegiScan API key"
+                placeholder={loaded ? 'Enter your LegiScan API key' : 'Loading...'}
                 value={legiscanKey}
                 onChange={(e) => setLegiscanKey(e.target.value)}
+                onFocus={() => {
+                  if (legiscanKey.includes('••')) setLegiscanKey('');
+                }}
               />
               <a
                 href="https://legiscan.com/user/register"
@@ -56,14 +109,22 @@ export default function SettingsPage() {
           </div>
 
           <div className="input-group">
-            <label>Congress.gov API Key</label>
+            <label>
+              Congress.gov API Key
+              {hasCongressKey ? (
+                <span style={{ marginLeft: 'var(--space-2)', fontSize: 'var(--text-xs)', color: 'var(--color-support)' }}>✓ Configured</span>
+              ) : null}
+            </label>
             <div className="input-with-action">
               <input
                 type="password"
                 className="input"
-                placeholder="Enter your Congress.gov API key"
+                placeholder={loaded ? 'Enter your Congress.gov API key' : 'Loading...'}
                 value={congressKey}
                 onChange={(e) => setCongressKey(e.target.value)}
+                onFocus={() => {
+                  if (congressKey.includes('••')) setCongressKey('');
+                }}
               />
               <a
                 href="https://api.congress.gov/sign-up/"
@@ -129,8 +190,8 @@ export default function SettingsPage() {
         </div>
 
         <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-          <button className="btn btn-primary" onClick={handleSave}>
-            Save Settings
+          <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving...' : 'Save Settings'}
           </button>
           {saved ? (
             <span style={{ display: 'flex', alignItems: 'center', fontSize: 'var(--text-sm)', color: 'var(--color-success)' }}>
