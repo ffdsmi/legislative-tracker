@@ -2,10 +2,66 @@
 
 import { useState, useEffect } from 'react';
 
+const ALL_JURISDICTIONS = [
+  { code: 'US', label: 'U.S. Congress' },
+  { code: 'AL', label: 'Alabama' },
+  { code: 'AK', label: 'Alaska' },
+  { code: 'AZ', label: 'Arizona' },
+  { code: 'AR', label: 'Arkansas' },
+  { code: 'CA', label: 'California' },
+  { code: 'CO', label: 'Colorado' },
+  { code: 'CT', label: 'Connecticut' },
+  { code: 'DE', label: 'Delaware' },
+  { code: 'FL', label: 'Florida' },
+  { code: 'GA', label: 'Georgia' },
+  { code: 'HI', label: 'Hawaii' },
+  { code: 'ID', label: 'Idaho' },
+  { code: 'IL', label: 'Illinois' },
+  { code: 'IN', label: 'Indiana' },
+  { code: 'IA', label: 'Iowa' },
+  { code: 'KS', label: 'Kansas' },
+  { code: 'KY', label: 'Kentucky' },
+  { code: 'LA', label: 'Louisiana' },
+  { code: 'ME', label: 'Maine' },
+  { code: 'MD', label: 'Maryland' },
+  { code: 'MA', label: 'Massachusetts' },
+  { code: 'MI', label: 'Michigan' },
+  { code: 'MN', label: 'Minnesota' },
+  { code: 'MS', label: 'Mississippi' },
+  { code: 'MO', label: 'Missouri' },
+  { code: 'MT', label: 'Montana' },
+  { code: 'NE', label: 'Nebraska' },
+  { code: 'NV', label: 'Nevada' },
+  { code: 'NH', label: 'New Hampshire' },
+  { code: 'NJ', label: 'New Jersey' },
+  { code: 'NM', label: 'New Mexico' },
+  { code: 'NY', label: 'New York' },
+  { code: 'NC', label: 'North Carolina' },
+  { code: 'ND', label: 'North Dakota' },
+  { code: 'OH', label: 'Ohio' },
+  { code: 'OK', label: 'Oklahoma' },
+  { code: 'OR', label: 'Oregon' },
+  { code: 'PA', label: 'Pennsylvania' },
+  { code: 'RI', label: 'Rhode Island' },
+  { code: 'SC', label: 'South Carolina' },
+  { code: 'SD', label: 'South Dakota' },
+  { code: 'TN', label: 'Tennessee' },
+  { code: 'TX', label: 'Texas' },
+  { code: 'UT', label: 'Utah' },
+  { code: 'VT', label: 'Vermont' },
+  { code: 'VA', label: 'Virginia' },
+  { code: 'WA', label: 'Washington' },
+  { code: 'WV', label: 'West Virginia' },
+  { code: 'WI', label: 'Wisconsin' },
+  { code: 'WY', label: 'Wyoming' },
+  { code: 'DC', label: 'Washington D.C.' },
+];
+
 export default function SettingsPage() {
   const [legiscanKey, setLegiscanKey] = useState('');
   const [congressKey, setCongressKey] = useState('');
   const [pollInterval, setPollInterval] = useState('60');
+  const [trackedJurisdictions, setTrackedJurisdictions] = useState(['US', 'NE']);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -19,6 +75,7 @@ export default function SettingsPage() {
         setLegiscanKey(data.legiscanApiKey || '');
         setCongressKey(data.congressApiKey || '');
         setPollInterval(String(data.pollInterval || 60));
+        setTrackedJurisdictions(data.trackedJurisdictions || ['US', 'NE']);
         setHasLegiscanKey(data.hasLegiscanKey || false);
         setHasCongressKey(data.hasCongressKey || false);
         setLoaded(true);
@@ -26,10 +83,16 @@ export default function SettingsPage() {
       .catch(() => setLoaded(true));
   }, []);
 
+  const toggleJurisdiction = (code) => {
+    setTrackedJurisdictions(prev =>
+      prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]
+    );
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      const payload = { pollInterval: Number(pollInterval) };
+      const payload = { pollInterval: Number(pollInterval), trackedJurisdictions };
       // Only send keys if user typed a new value (not the masked placeholder)
       if (legiscanKey && !legiscanKey.includes('••')) {
         payload.legiscanApiKey = legiscanKey;
@@ -169,16 +232,68 @@ export default function SettingsPage() {
 
         <div className="settings-card fade-in">
           <h3>📊 Data Management</h3>
-          <p>Manage your tracked jurisdictions and data storage.</p>
+          <p>Select the jurisdictions you want to monitor for legislative activity.</p>
 
           <div className="input-group">
-            <label>Tracked Jurisdictions</label>
-            <div className="keyword-list">
-              {['U.S. Congress', 'Nebraska', 'California', 'Texas', 'New York'].map((j) => (
-                <span key={j} className="keyword-chip">
-                  {j}
-                  <span className="remove">✕</span>
-                </span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-2)' }}>
+              <label>Tracked Jurisdictions ({trackedJurisdictions.length} selected)</label>
+              <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setTrackedJurisdictions(ALL_JURISDICTIONS.map(j => j.code))}
+                >
+                  Select All
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setTrackedJurisdictions([])}
+                >
+                  Clear All
+                </button>
+              </div>
+            </div>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+              gap: 'var(--space-1)',
+              maxHeight: 300,
+              overflowY: 'auto',
+              padding: 'var(--space-3)',
+              background: 'var(--bg-tertiary)',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border)',
+            }}>
+              {ALL_JURISDICTIONS.map((j) => (
+                <label
+                  key={j.code}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--space-2)',
+                    padding: 'var(--space-1) var(--space-2)',
+                    borderRadius: 'var(--radius-sm)',
+                    cursor: 'pointer',
+                    fontSize: 'var(--text-sm)',
+                    color: trackedJurisdictions.includes(j.code) ? 'var(--text-primary)' : 'var(--text-muted)',
+                    background: trackedJurisdictions.includes(j.code) ? 'rgba(139, 92, 246, 0.1)' : 'transparent',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={trackedJurisdictions.includes(j.code)}
+                    onChange={() => toggleJurisdiction(j.code)}
+                    style={{ accentColor: 'var(--accent)' }}
+                  />
+                  <span style={{ fontWeight: trackedJurisdictions.includes(j.code) ? 500 : 400 }}>
+                    {j.label}
+                  </span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs)', marginLeft: 'auto' }}>
+                    {j.code}
+                  </span>
+                </label>
               ))}
             </div>
           </div>

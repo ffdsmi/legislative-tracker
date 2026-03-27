@@ -7,8 +7,10 @@ export default function DashboardPage() {
   const [stats, setStats] = useState({ bills: 0, watchlist: 0, keywords: 0, alerts: 0 });
   const [alerts, setAlerts] = useState([]);
   const [ingesting, setIngesting] = useState(false);
+  const [ingestingState, setIngestingState] = useState(null);
   const [ingestResult, setIngestResult] = useState(null);
   const [hasApiKey, setHasApiKey] = useState(false);
+  const [trackedJurisdictions, setTrackedJurisdictions] = useState([]);
 
   useEffect(() => {
     Promise.all([
@@ -25,11 +27,13 @@ export default function DashboardPage() {
       });
       setAlerts((alertsData.alerts || []).slice(0, 5));
       setHasApiKey(settings.hasLegiscanKey || false);
+      setTrackedJurisdictions(settings.trackedJurisdictions || []);
     }).catch(() => {});
   }, []);
 
   const handleIngest = async (state) => {
     setIngesting(true);
+    setIngestingState(state);
     setIngestResult(null);
     try {
       const res = await fetch('/api/ingest', {
@@ -39,7 +43,11 @@ export default function DashboardPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setIngestResult(`✓ Ingested ${data.result.ingested} bills from ${data.result.session}`);
+        const r = data.result;
+        const parts = [`${r.updated} updated`];
+        if (r.skipped) parts.push(`${r.skipped} skipped`);
+        parts.push(`${r.totalInSession} total in session`);
+        setIngestResult(`✓ ${r.session}: ${parts.join(', ')}`);
         // Refresh stats
         const [alertsData] = await Promise.all([
           fetch('/api/alerts').then(r => r.json()),
@@ -53,7 +61,56 @@ export default function DashboardPage() {
       setIngestResult(`⚠️ Error: ${err.message}`);
     } finally {
       setIngesting(false);
+      setIngestingState(null);
     }
+  };
+
+  const handleIngestAll = async () => {
+    setIngesting(true);
+    setIngestResult(null);
+    const results = [];
+    for (const code of trackedJurisdictions) {
+      setIngestingState(code);
+      try {
+        const res = await fetch('/api/ingest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ state: code, limit: 10 }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          const r = data.result;
+          results.push(`${code}: ${r.updated} updated, ${r.skipped || 0} skipped (${r.totalInSession} total)`);
+        } else {
+          results.push(`${code}: ${data.error}`);
+        }
+      } catch (err) {
+        results.push(`${code}: error`);
+      }
+    }
+    // Refresh stats
+    try {
+      const alertsData = await fetch('/api/alerts').then(r => r.json());
+      setStats(prev => ({ ...prev, alerts: alertsData.unread || 0 }));
+      setAlerts((alertsData.alerts || []).slice(0, 5));
+    } catch {}
+    setIngestResult(`✓ ${results.join(' · ')}`);
+    setIngesting(false);
+    setIngestingState(null);
+  };
+
+  const STATE_NAMES = {
+    US: 'U.S. Congress', AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas',
+    CA: 'California', CO: 'Colorado', CT: 'Connecticut', DE: 'Delaware', FL: 'Florida',
+    GA: 'Georgia', HI: 'Hawaii', ID: 'Idaho', IL: 'Illinois', IN: 'Indiana',
+    IA: 'Iowa', KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana', ME: 'Maine',
+    MD: 'Maryland', MA: 'Massachusetts', MI: 'Michigan', MN: 'Minnesota', MS: 'Mississippi',
+    MO: 'Missouri', MT: 'Montana', NE: 'Nebraska', NV: 'Nevada', NH: 'New Hampshire',
+    NJ: 'New Jersey', NM: 'New Mexico', NY: 'New York', NC: 'North Carolina', ND: 'North Dakota',
+    OH: 'Ohio', OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania', RI: 'Rhode Island',
+    SC: 'South Carolina', SD: 'South Dakota', TN: 'Tennessee', TX: 'Texas', UT: 'Utah',
+    VT: 'Vermont', VA: 'Virginia', WA: 'Washington', WV: 'West Virginia', WI: 'Wisconsin',
+    WY: 'Wyoming', DC: 'Washington D.C.',
   };
 
   const STAT_CARDS = [
@@ -90,21 +147,35 @@ export default function DashboardPage() {
         <div className="card fade-in" style={{ marginTop: 'var(--space-4)' }}>
           <h3>📥 Ingest Bills</h3>
           <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-4)' }}>
-            Pull bills from LegiScan, store text versions, compute diffs, and check keyword matches.
+            Pull bills from your tracked jurisdictions, store text versions, compute diffs, and check keyword matches.
           </p>
-          <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap', alignItems: 'center' }}>
-            <button className="btn btn-primary" onClick={() => handleIngest('NE')} disabled={ingesting}>
-              {ingesting ? '⏳ Ingesting...' : '🌽 Ingest Nebraska'}
-            </button>
-            <button className="btn btn-secondary" onClick={() => handleIngest('US')} disabled={ingesting}>
-              🏛 Ingest U.S. Congress
-            </button>
-            {ingestResult ? (
-              <span style={{ fontSize: 'var(--text-sm)', color: ingestResult.startsWith('✓') ? 'var(--color-success)' : 'var(--color-oppose)' }}>
-                {ingestResult}
-              </span>
-            ) : null}
-          </div>
+          {trackedJurisdictions.length > 0 ? (
+            <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap', alignItems: 'center' }}>
+              <button className="btn btn-primary" onClick={handleIngestAll} disabled={ingesting}>
+                {ingesting ? `⏳ Ingesting ${ingestingState || ''}...` : `📥 Ingest All (${trackedJurisdictions.length} jurisdictions)`}
+              </button>
+              {trackedJurisdictions.map(code => (
+                <button
+                  key={code}
+                  className="btn btn-secondary"
+                  onClick={() => handleIngest(code)}
+                  disabled={ingesting}
+                  style={{ fontSize: 'var(--text-sm)' }}
+                >
+                  {ingestingState === code ? '⏳' : '📄'} {STATE_NAMES[code] || code}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
+              No jurisdictions selected. <Link href="/settings">Go to Settings</Link> to choose which states to track.
+            </p>
+          )}
+          {ingestResult ? (
+            <p style={{ fontSize: 'var(--text-sm)', marginTop: 'var(--space-3)', color: ingestResult.startsWith('✓') ? 'var(--color-success)' : 'var(--color-oppose)' }}>
+              {ingestResult}
+            </p>
+          ) : null}
         </div>
       ) : null}
 
