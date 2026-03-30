@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { searchBills, getSessionList, getMasterList } from '@/lib/legiscan';
+import { db } from '@/lib/db';
 import { getSettings } from '@/lib/settings';
 import { listBills } from '@/lib/store';
 import { requireSession } from '@/lib/session';
 
-// GET /api/bills — search or list bills from LegiScan (or local store)
+// GET /api/bills — search or list bills from local synchronized PostgreSQL database
 export async function GET(request) {
   try {
     const session = await requireSession();
@@ -33,66 +33,55 @@ export async function GET(request) {
     }
 
     const search = searchParams.get('search') || '';
-    const state = searchParams.get('state') || 'NE';
+    const state = searchParams.get('state') || 'ANY';
+    const limit = parseInt(searchParams.get('limit')) || 50;
+    const offset = parseInt(searchParams.get('offset')) || 0;
 
-    if (search) {
-      // Search mode
-      const result = await searchBills(session.workspaceId, search, { state: state === 'ALL' ? '' : state });
-      const bills = [];
-      for (const [key, value] of Object.entries(result)) {
-        if (key !== 'summary' && typeof value === 'object' && value.bill_id) {
-          bills.push({
-            id: value.bill_id,
-            number: value.bill_number,
-            title: value.title,
-            jurisdiction: value.state,
-            status: statusLabel(value.status) || 'Unknown',
-            lastAction: value.last_action_date || '',
-            lastActionText: value.last_action || '',
-            relevance: value.relevance,
-            url: value.url,
-          });
-        }
-      }
-      const summary = result.summary || {};
-      return NextResponse.json({ bills, total: summary.count || bills.length, source: 'search' });
-    } else {
-      // Master list mode — get current session bills
-      const sessions = await getSessionList(session.workspaceId, state);
-      if (!sessions || sessions.length === 0) {
-        return NextResponse.json({ bills: [], total: 0, error: `No sessions found for state: ${state}` });
-      }
-
-      // Get the most recent session
-      const currentSession = Array.isArray(sessions)
-        ? sessions[0]
-        : Object.values(sessions).find(s => typeof s === 'object');
-
-      if (!currentSession || !currentSession.session_id) {
-        return NextResponse.json({ bills: [], total: 0, error: 'Could not determine current session' });
-      }
-
-      const { session: masterSession, bills: masterBills } = await getMasterList(session.workspaceId, currentSession.session_id);
-
-      const bills = masterBills.slice(0, 50).map((b) => ({
-        id: b.bill_id,
-        number: b.number,
-        title: b.title,
-        jurisdiction: state,
-        status: statusLabel(b.status),
-        lastAction: b.last_action_date || '',
-        lastActionText: b.last_action || '',
-        url: b.url,
-      }));
-
-      return NextResponse.json({
-        bills,
-        total: masterBills.length,
-        session: masterSession,
-        source: 'masterlist',
-        showing: bills.length,
-      });
+    const where = { workspaceId: session.workspaceId };
+    
+    // Filter by jurisdiction if specific state is requested
+    if (state && state !== 'ALL' && state !== 'ANY') {
+      where.jurisdiction = state;
     }
+
+    // Free text search matching title, number, or description
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { number: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+
+    // Execute optimized count and lookup simultaneously using robust indexed workspaceId fields
+    const [dbBills, totalCount] = await Promise.all([
+      db.bill.findMany({
+        where,
+        orderBy: { updatedAt: 'desc' }, 
+        take: limit,
+        skip: offset,
+      }),
+      db.bill.count({ where })
+    ]);
+
+    const bills = dbBills.map(b => ({
+      id: b.id,
+      number: b.number,
+      title: b.title,
+      jurisdiction: b.jurisdiction,
+      status: statusLabel(b.status) || 'Unknown',
+      lastAction: b.lastActionDate || '',
+      lastActionText: b.lastAction || '',
+      url: b.url,
+    }));
+
+    return NextResponse.json({ 
+      bills, 
+      total: totalCount, 
+      source: search ? 'search' : 'masterlist',
+      showing: bills.length
+    });
+
   } catch (err) {
     if (err.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     return NextResponse.json({ error: err.message, bills: [] }, { status: 200 });

@@ -203,7 +203,7 @@ export default function BillsPage() {
 
         {hasSearched && !loading ? (
           <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
-            {total.toLocaleString()} bills {activeStates.length > 1 ? `across ${activeStates.length} jurisdictions` : ''} {source === 'masterlist' ? `(showing ${bills.length})` : 'found'}
+            {total.toLocaleString()} tracked bills {activeStates.length > 1 ? `across ${activeStates.length} jurisdictions ` : ''}(showing {bills.filter(b => activeStates.includes(b.jurisdiction)).length})
           </span>
         ) : null}
       </form>
@@ -229,8 +229,8 @@ export default function BillsPage() {
                 </tr>
               </thead>
               <tbody>
-                {bills.filter(b => statusFilter === 'ALL' || String(b.status).includes(statusFilter)).length > 0 ? (
-                  bills.filter(b => statusFilter === 'ALL' || String(b.status).includes(statusFilter)).map((bill) => (
+                {bills.filter(b => activeStates.includes(b.jurisdiction) && (statusFilter === 'ALL' || String(b.status).includes(statusFilter))).length > 0 ? (
+                  bills.filter(b => activeStates.includes(b.jurisdiction) && (statusFilter === 'ALL' || String(b.status).includes(statusFilter))).map((bill) => (
                     <tr key={`${bill.jurisdiction || ''}-${bill.id}`}>
                       <td>
                         <Link href={`/bills/${bill.id}`} className="bill-number">
