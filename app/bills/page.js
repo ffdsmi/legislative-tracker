@@ -153,7 +153,7 @@ export default function BillsPage() {
     <>
       <div className="page-header fade-in">
         <h1>Bill Explorer</h1>
-        <p>Search and browse bills from LegiScan</p>
+        <p>Search and browse all tracked bills.</p>
       </div>
 
       {error ? (
@@ -251,7 +251,7 @@ export default function BillsPage() {
         {loading ? (
           <div style={{ padding: 'var(--space-8)', textAlign: 'center' }}>
             <div style={{ fontSize: 32, marginBottom: 'var(--space-4)', animation: 'pulse 1.5s infinite' }} aria-hidden="true">📜</div>
-            <p style={{ color: 'var(--text-secondary)' }} role="status">Fetching bills from LegiScan...</p>
+            <p style={{ color: 'var(--text-secondary)' }} role="status">Loading bills from database...</p>
           </div>
         ) : (
           <div className="table-responsive">
@@ -328,7 +328,7 @@ export default function BillsPage() {
                       <div className="empty-state">
                         <div className="empty-state-icon" aria-hidden="true">🔍</div>
                         <h3>{activeStates.length === 0 ? 'No jurisdictions selected' : hasSearched ? 'No bills found' : 'Loading...'}</h3>
-                        <p>{activeStates.length === 0 ? 'Select a jurisdiction above to browse bills.' : hasSearched ? 'Try a different search term or select another jurisdiction.' : 'Fetching bills from LegiScan...'}</p>
+                        <p>{activeStates.length === 0 ? 'Select a jurisdiction above to browse bills.' : hasSearched ? 'Try a different search term or select another jurisdiction.' : 'Loading bills...'}</p>
                       </div>
                     </td>
                   </tr>
