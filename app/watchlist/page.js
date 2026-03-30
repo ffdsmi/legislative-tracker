@@ -21,6 +21,17 @@ export default function WatchlistPage() {
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
 
+  // Restore watchlist preferences from sessionStorage
+  useEffect(() => {
+    try {
+      const savedFilter = sessionStorage.getItem('wl_filter');
+      if (savedFilter) setFilter(savedFilter);
+    } catch (e) {}
+  }, []);
+
+  // Save changes to sessionStorage
+  useEffect(() => { sessionStorage.setItem('wl_filter', filter); }, [filter]);
+
   useEffect(() => {
     fetch('/api/watchlist')
       .then(r => r.json())

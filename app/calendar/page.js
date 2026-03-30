@@ -15,6 +15,27 @@ export default function CalendarPage() {
   const [filterState, setFilterState] = useState('ALL');
   const [listRange, setListRange] = useState('upcoming');
 
+  // Restore calendar preferences from sessionStorage
+  useEffect(() => {
+    try {
+      const savedView = sessionStorage.getItem('cal_view');
+      const savedFilterType = sessionStorage.getItem('cal_filterType');
+      const savedFilterState = sessionStorage.getItem('cal_filterState');
+      const savedListRange = sessionStorage.getItem('cal_listRange');
+      
+      if (savedView) setView(savedView);
+      if (savedFilterType) setFilterType(savedFilterType);
+      if (savedFilterState) setFilterState(savedFilterState);
+      if (savedListRange) setListRange(savedListRange);
+    } catch (e) {}
+  }, []);
+
+  // Save changes to sessionStorage
+  useEffect(() => { sessionStorage.setItem('cal_view', view); }, [view]);
+  useEffect(() => { sessionStorage.setItem('cal_filterType', filterType); }, [filterType]);
+  useEffect(() => { sessionStorage.setItem('cal_filterState', filterState); }, [filterState]);
+  useEffect(() => { sessionStorage.setItem('cal_listRange', listRange); }, [listRange]);
+
   const fetchEvents = async () => {
     setLoading(true);
     try {
