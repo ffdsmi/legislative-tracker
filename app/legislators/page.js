@@ -8,6 +8,7 @@ export default function LegislatorsPage() {
   const [legislators, setLegislators] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState(null);
   const [search, setSearch] = useState('');
   const [selectedState, setSelectedState] = useState('');
   const [selectedParty, setSelectedParty] = useState('');
@@ -56,16 +57,40 @@ export default function LegislatorsPage() {
   }, [search, selectedState, selectedParty, selectedChamber]);
   const handleSync = async () => {
     setSyncing(true);
+    setSyncProgress(null);
     try {
       const res = await fetch('/api/legislators/sync', { method: 'POST' });
-      const data = await res.json();
-      if (data.success) {
-        await fetchLegislators();
+      if (!res.ok) throw new Error('API Error');
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let currentText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        currentText += decoder.decode(value, { stream: true });
+        const lines = currentText.split('\n');
+        currentText = lines.pop(); // keep remainder
+        for (const line of lines) {
+          if (line.trim()) {
+            const data = JSON.parse(line);
+            if (data.type === 'progress' || data.type === 'start') {
+              setSyncProgress(data);
+            } else if (data.type === 'error') {
+              console.error(data.message);
+            }
+          }
+        }
       }
+
+      await fetchLegislators();
     } catch (err) {
       console.error(err);
+    } finally {
+      setSyncing(false);
+      setTimeout(() => setSyncProgress(null), 3000);
     }
-    setSyncing(false);
   };
 
   const openDetails = async (leg) => {
@@ -99,9 +124,25 @@ export default function LegislatorsPage() {
       <header className="page-header" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
           <h1 className="page-title" style={{ margin: 0 }}>Legislator Directory</h1>
-          <button className="btn btn-secondary" disabled={syncing} onClick={handleSync}>
-            {syncing ? 'Syncing...' : 'Sync Directory'}
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--space-2)' }}>
+            <button className="btn btn-secondary" disabled={syncing} onClick={handleSync}>
+              {syncing ? 'Syncing...' : 'Sync Directory'}
+            </button>
+            {syncProgress && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', width: '250px' }}>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                  {syncProgress.message || 'Starting...'}
+                </div>
+                {syncProgress.total ? (
+                  <progress 
+                    value={syncProgress.current || 0} 
+                    max={syncProgress.total} 
+                    style={{ width: '100%', height: '4px', accentColor: 'var(--color-primary)' }} 
+                  />
+                ) : null}
+              </div>
+            )}
+          </div>
         </div>
         
         <div style={{ display: 'flex', gap: 'var(--space-3)', width: '100%', flexWrap: 'wrap' }}>

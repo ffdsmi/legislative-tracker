@@ -541,14 +541,23 @@ export default function SettingsPage() {
                         btn.innerHTML = '⏳';
                         btn.disabled = true;
                         try {
-                          await fetch('/api/ingest', {
+                          const res = await fetch('/api/ingest', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ state: j.code })
                           });
+                          
+                          // Consume the streaming response to completion
+                          const reader = res.body.getReader();
+                          while (true) {
+                            const { done } = await reader.read();
+                            if (done) break;
+                          }
+                          
                           btn.innerHTML = '✅';
                           setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 2000);
                         } catch(err) {
+                          console.error(err);
                           btn.innerHTML = '❌';
                           setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 2000);
                         }
@@ -594,6 +603,7 @@ export default function SettingsPage() {
                 try {
                   const res = await fetch('/api/settings/data', { method: 'DELETE' });
                   const data = await res.json();
+                  if (!res.ok) throw new Error(data.error || 'Server error during deletion');
                   if (data.success) {
                     alert('✓ All data has been cleared.');
                     window.location.reload();

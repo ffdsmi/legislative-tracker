@@ -9,6 +9,7 @@ export default function DashboardPage() {
   const [ingesting, setIngesting] = useState(false);
   const [ingestingState, setIngestingState] = useState(null);
   const [ingestResult, setIngestResult] = useState(null);
+  const [ingestProgress, setIngestProgress] = useState(null);
   const [hasApiKey, setHasApiKey] = useState(false);
   const [trackedJurisdictions, setTrackedJurisdictions] = useState([]);
   const [watchlistBills, setWatchlistBills] = useState([]);
@@ -53,43 +54,75 @@ export default function DashboardPage() {
     });
   }, []);
 
+  const processIngestStream = async (res) => {
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || 'API Error');
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let currentText = '';
+    let finalResult = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      currentText += decoder.decode(value, { stream: true });
+      const lines = currentText.split('\n');
+      currentText = lines.pop(); // keep remainder
+      for (const line of lines) {
+        if (line.trim()) {
+          const data = JSON.parse(line);
+          if (data.type === 'progress' || data.type === 'start') {
+            setIngestProgress(data);
+          } else if (data.type === 'done') {
+            finalResult = data.result;
+          } else if (data.type === 'error') {
+            throw new Error(data.message);
+          }
+        }
+      }
+    }
+    return finalResult;
+  };
+
   const handleIngest = async (state) => {
     setIngesting(true);
     setIngestingState(state);
     setIngestResult(null);
+    setIngestProgress(null);
     try {
       const res = await fetch('/api/ingest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ state, limit: 10 }),
       });
-      const data = await res.json();
-      if (data.success) {
-        const r = data.result;
+      
+      const r = await processIngestStream(res);
+      if (r) {
         const parts = [`${r.updated} updated`];
         if (r.skipped) parts.push(`${r.skipped} skipped`);
         parts.push(`${r.totalInSession} total in session`);
-        setIngestResult(`✓ ${r.session}: ${parts.join(', ')}`);
+        setIngestResult(`✓ ${r.session || state}: ${parts.join(', ')}`);
+        
         // Refresh stats
-        const [alertsData] = await Promise.all([
-          fetch('/api/alerts').then(r => r.json()),
-        ]);
+        const alertsData = await fetch('/api/alerts').then(resp => resp.json()).catch(() => ({}));
         setStats(prev => ({ ...prev, alerts: alertsData.unread || 0 }));
         setAlerts((alertsData.alerts || []).slice(0, 5));
-      } else {
-        setIngestResult(`⚠️ ${data.error}`);
       }
     } catch (err) {
       setIngestResult(`⚠️ Error: ${err.message}`);
     } finally {
       setIngesting(false);
       setIngestingState(null);
+      setIngestProgress(null);
     }
   };
 
   const handleIngestAll = async () => {
     setIngesting(true);
     setIngestResult(null);
+    setIngestProgress(null);
     const results = [];
     for (const code of trackedJurisdictions) {
       setIngestingState(code);
@@ -99,26 +132,24 @@ export default function DashboardPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ state: code, limit: 10 }),
         });
-        const data = await res.json();
-        if (data.success) {
-          const r = data.result;
-          results.push(`${code}: ${r.updated} updated, ${r.skipped || 0} skipped (${r.totalInSession} total)`);
-        } else {
-          results.push(`${code}: ${data.error}`);
+        const r = await processIngestStream(res);
+        if (r) {
+          results.push(`${code}: ${r.updated} updated, ${r.skipped || 0} skipped`);
         }
       } catch (err) {
-        results.push(`${code}: error`);
+        results.push(`${code}: ${err.message}`);
       }
     }
     // Refresh stats
     try {
-      const alertsData = await fetch('/api/alerts').then(r => r.json());
+      const alertsData = await fetch('/api/alerts').then(resp => resp.json());
       setStats(prev => ({ ...prev, alerts: alertsData.unread || 0 }));
       setAlerts((alertsData.alerts || []).slice(0, 5));
     } catch {}
     setIngestResult(`✓ ${results.join(' · ')}`);
     setIngesting(false);
     setIngestingState(null);
+    setIngestProgress(null);
   };
 
   const STATE_NAMES = {
@@ -211,11 +242,39 @@ export default function DashboardPage() {
             </p>
           )}
           <div aria-live="polite" role="status">
-            {ingestResult ? (
+            {ingestProgress && ingestingState && (
+              <div style={{ marginTop: 'var(--space-4)', padding: 'var(--space-3)', backgroundColor: 'var(--bg-card-hover)', borderRadius: 'var(--radius-md)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-1)' }}>
+                  <span style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}>
+                    {STATE_NAMES[ingestingState] || ingestingState} Ingestion
+                  </span>
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                    {ingestProgress.current && ingestProgress.total ? `${ingestProgress.current} / ${ingestProgress.total}` : ''}
+                  </span>
+                </div>
+                {ingestProgress.total && (
+                  <progress 
+                    value={ingestProgress.current || 0} 
+                    max={ingestProgress.total} 
+                    style={{ width: '100%', height: '8px', accentColor: 'var(--color-primary)' }} 
+                  />
+                )}
+                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-2)' }}>
+                  {ingestProgress.message || 'Processing...'}
+                </p>
+                {ingestProgress.metrics && (
+                   <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: 'var(--space-1)' }}>
+                     Updated: {ingestProgress.metrics.updated} · Skipped: {ingestProgress.metrics.skipped}
+                   </p>
+                )}
+              </div>
+            )}
+            
+            {ingestResult && !ingestingState && (
               <p style={{ fontSize: 'var(--text-sm)', marginTop: 'var(--space-3)', color: ingestResult.startsWith('✓') ? 'var(--color-success)' : 'var(--color-oppose)' }}>
                 {ingestResult}
               </p>
-            ) : null}
+            )}
           </div>
         </div>
       ) : null}

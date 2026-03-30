@@ -35,15 +35,15 @@ export async function DELETE() {
     const session = await requireSession();
     const workspaceId = session.workspaceId;
 
-    // Perform deletions in parallel where relations allow
-    await db.$transaction([
-      db.bill.deleteMany({ where: { workspaceId } }), // Cascades onto dependencies
-      db.keyword.deleteMany({ where: { workspaceId } }),
-      db.alert.deleteMany({ where: { workspaceId } }),
-      db.collection.deleteMany({ where: { workspaceId } }),
-      db.tag.deleteMany({ where: { workspaceId } }),
-      db.settings.update({ where: { workspaceId }, data: { datasetTracker: "{}" } }),
-    ]);
+    // Perform deletions sequentially to prevent locking limits
+    await db.bill.deleteMany({ where: { workspaceId } }); // Cascades onto texts, diffs, interactions
+    await db.legislator.deleteMany({ where: { workspaceId } });
+    await db.docket.deleteMany({ where: { workspaceId } });
+    await db.keyword.deleteMany({ where: { workspaceId } });
+    await db.alert.deleteMany({ where: { workspaceId } });
+    await db.collection.deleteMany({ where: { workspaceId } });
+    await db.tag.deleteMany({ where: { workspaceId } });
+    await db.settings.update({ where: { workspaceId }, data: { datasetTracker: "{}" } });
 
     return NextResponse.json({ success: true, message: 'All data cleared.' });
   } catch (err) {
