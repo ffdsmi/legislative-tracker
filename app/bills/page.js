@@ -30,7 +30,10 @@ export default function BillsPage() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [watchedIds, setWatchedIds] = useState(new Set());
 
-  // Load tracked jurisdictions from settings
+  // Initialization flag
+  const hasLoadedSettings = useRef(false);
+
+  // Load tracked jurisdictions from settings and restore session filters
   useEffect(() => {
     Promise.all([
       fetch('/api/settings').then(r => r.json()),
@@ -38,11 +41,47 @@ export default function BillsPage() {
     ]).then(([data, watchData]) => {
       const tracked = data.trackedJurisdictions || [];
       setTrackedJurisdictions(tracked);
-      setActiveStates(tracked);
+      
+      try {
+        const savedStates = sessionStorage.getItem('billExplorer_states');
+        const savedSearch = sessionStorage.getItem('billExplorer_search');
+        const savedStatus = sessionStorage.getItem('billExplorer_statusFilter');
+        
+        if (savedStates) {
+          setActiveStates(JSON.parse(savedStates));
+        } else {
+          setActiveStates(tracked);
+        }
+        
+        if (savedSearch) setSearch(savedSearch);
+        if (savedStatus) setStatusFilter(savedStatus);
+      } catch (e) {
+        setActiveStates(tracked);
+      }
+
       const ids = new Set((watchData.items || []).map(i => String(i.billId)));
       setWatchedIds(ids);
-    }).catch(() => {});
+      hasLoadedSettings.current = true;
+    }).catch(() => {
+      hasLoadedSettings.current = true;
+    });
   }, []);
+
+  // Save filters to session storage when they change (after initial load)
+  useEffect(() => {
+    if (!hasLoadedSettings.current) return;
+    sessionStorage.setItem('billExplorer_states', JSON.stringify(activeStates));
+  }, [activeStates]);
+
+  useEffect(() => {
+    if (!hasLoadedSettings.current) return;
+    sessionStorage.setItem('billExplorer_search', search);
+  }, [search]);
+
+  useEffect(() => {
+    if (!hasLoadedSettings.current) return;
+    sessionStorage.setItem('billExplorer_statusFilter', statusFilter);
+  }, [statusFilter]);
 
   const fetchBills = useCallback(async (searchQuery, stateCodes) => {
     if (stateCodes.length === 0) {
@@ -89,14 +128,14 @@ export default function BillsPage() {
     }
   }, []);
 
-  // Initial load: wait for settings, then fetch
+  // Initial load: wait for settings, then fetch with restored search terms
   const initialLoadDone = useRef(false);
   useEffect(() => {
-    if (activeStates.length > 0 && !initialLoadDone.current) {
+    if (activeStates.length > 0 && !initialLoadDone.current && hasLoadedSettings.current) {
       initialLoadDone.current = true;
-      fetchBills('', activeStates);
+      fetchBills(search, activeStates);
     }
-  }, [activeStates, fetchBills]);
+  }, [activeStates, search, fetchBills]);
 
   const handleSearch = (e) => {
     if (e) e.preventDefault();
