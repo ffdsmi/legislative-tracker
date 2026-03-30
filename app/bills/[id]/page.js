@@ -25,6 +25,7 @@ export default function BillDetailPage() {
   const [activeTab, setActiveTab] = useState('overview');
   const [isWatched, setIsWatched] = useState(false);
   const [relatedBills, setRelatedBills] = useState([]);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Tags
   const [allTags, setAllTags] = useState([]);
@@ -201,6 +202,26 @@ export default function BillDetailPage() {
     }
   };
 
+  const handleLiveSync = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await fetch(`/api/bills/${id}/sync`, { method: 'POST' });
+      const data = await res.json();
+      if (data.updated) {
+        alert('New data retrieved! Reloading page to display the updates...');
+        window.location.reload();
+      } else if (data.success) {
+        alert('Data is fully up to date with LegiScan.');
+      } else {
+        alert(data.error || 'Failed to sync.');
+      }
+    } catch (err) {
+      alert('Network error during sync: ' + err.message);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleCreateAnnotation = async () => {
     if (!selectedText) return;
     try {
@@ -328,9 +349,14 @@ export default function BillDetailPage() {
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
         <Link href="/bills" className="btn btn-ghost btn-sm">← Back to Bills</Link>
-        <button className="btn btn-sm btn-secondary" onClick={handleExportPdf} disabled={exporting}>
-          {exporting ? '⏳ Exporting...' : '📄 Export PDF'}
-        </button>
+        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+          <button className="btn btn-sm btn-secondary" onClick={handleLiveSync} disabled={isSyncing}>
+            {isSyncing ? '⏳ Checking Hash...' : '🔄 Check for Updates'}
+          </button>
+          <button className="btn btn-sm btn-secondary" onClick={handleExportPdf} disabled={exporting}>
+            {exporting ? '⏳ Exporting...' : '📄 Export PDF'}
+          </button>
+        </div>
       </div>
 
       <div className="page-header fade-in">

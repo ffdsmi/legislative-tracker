@@ -49,6 +49,10 @@ export async function POST(request) {
             subjects: bill.subjects || [],
             history: bill.history || [],
             calendar: bill.calendar || [],
+            texts: bill.texts || [],
+            votes: bill.votes || [],
+            amendments: bill.amendments || [],
+            supplements: bill.supplements || [],
             changeHash: bill.change_hash // CRITICAL for Delta Tracking Engine
           });
           processedCount++;

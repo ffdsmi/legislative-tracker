@@ -74,6 +74,11 @@ model Bill {
   sponsors   String? // JSON string
   subjects   String? // JSON string
   history    String? // JSON string
+  calendar   String? // JSON string
+  legiscanTexts String? // JSON string mapping doc versions
+  votes      String? // JSON string roll call details
+  amendments String? // JSON string
+  supplements String? // JSON string
   changeHash String?
 
   createdAt DateTime @default(now())
