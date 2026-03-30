@@ -7,17 +7,19 @@ import { db } from '@/lib/db';
 export async function GET() {
   try {
     const session = await requireSession();
-    const bills = await listBills(session.workspaceId);
     
-    const activeDockets = await db.docket.count({
-      where: { 
-        workspaceId: session.workspaceId,
-        status: 'Open for Comment'
-      }
-    });
+    const [billsCount, activeDockets] = await Promise.all([
+      db.bill.count({ where: { workspaceId: session.workspaceId } }),
+      db.docket.count({
+        where: { 
+          workspaceId: session.workspaceId,
+          status: 'Open for Comment'
+        }
+      })
+    ]);
 
     return NextResponse.json({
-      bills: bills.length,
+      bills: billsCount,
       dockets: activeDockets
     });
   } catch (err) {

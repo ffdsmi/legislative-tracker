@@ -13,15 +13,13 @@ export async function GET(request) {
 
     // Return locally stored bills (for testimony bill picker)
     if (source === 'local') {
-      const dbBills = await listBills(session.workspaceId);
-      const bills = dbBills.map(b => ({
-        id: b.id,
-        number: b.number,
-        title: b.title,
-        jurisdiction: b.jurisdiction,
-        status: b.status,
-      }));
-      return NextResponse.json({ bills, total: bills.length, source: 'local' });
+      const dbBills = await db.bill.findMany({
+        where: { workspaceId: session.workspaceId },
+        select: { id: true, number: true, title: true, jurisdiction: true, status: true },
+        orderBy: { updatedAt: 'desc' },
+        take: 500
+      });
+      return NextResponse.json({ bills: dbBills, total: dbBills.length, source: 'local' });
     }
 
     const settings = await getSettings(session.workspaceId);
