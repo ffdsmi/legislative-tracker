@@ -51,8 +51,7 @@ export async function POST(request) {
 
       return new Response(stream, {
         headers: {
-          'Content-Type': 'application/x-ndjson',
-          'Transfer-Encoding': 'chunked'
+          'Content-Type': 'application/x-ndjson'
         }
       });
     } else {
@@ -65,4 +64,5 @@ export async function POST(request) {
 }
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
