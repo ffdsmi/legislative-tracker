@@ -637,14 +637,40 @@ export default function SettingsPage() {
                 if (!file) return;
                 try {
                   setDatasetLoading(true);
-                  setDatasetResult(null);
+                  setDatasetResult('Initializing upload...');
                   
-                  const formData = new FormData();
-                  formData.append('dataset', file);
+                  const fileId = Date.now().toString();
+                  const chunkSize = 2 * 1024 * 1024; // 2MB
+                  const totalChunks = Math.ceil(file.size / chunkSize);
+                  
+                  // Stage 1: Upload Chunks
+                  for (let i = 0; i < totalChunks; i++) {
+                    setDatasetResult(`Uploading dataset chunk ${i + 1} of ${totalChunks}...`);
+                    const chunk = file.slice(i * chunkSize, (i + 1) * chunkSize);
+                    
+                    const chunkData = new FormData();
+                    chunkData.append('chunk', chunk);
+                    chunkData.append('fileId', fileId);
+                    chunkData.append('chunkIndex', i.toString());
+                    
+                    const chunkRes = await fetch('/api/ingest/dataset', {
+                      method: 'POST',
+                      body: chunkData
+                    });
+                    
+                    if (!chunkRes.ok) {
+                      throw new Error(`Failed to upload chunk ${i + 1}`);
+                    }
+                  }
+                  
+                  // Stage 2: Process & Stream NDJSON
+                  setDatasetResult('Assembling dataset...');
+                  const processData = new FormData();
+                  processData.append('processFileId', fileId);
                   
                   const res = await fetch('/api/ingest/dataset', {
                     method: 'POST',
-                    body: formData
+                    body: processData
                   });
 
                   if (!res.ok) {
@@ -662,7 +688,7 @@ export default function SettingsPage() {
                     
                     buffer += decoder.decode(value, { stream: true });
                     const lines = buffer.split('\n');
-                    buffer = lines.pop();
+                    buffer = lines.pop(); // last line might be incomplete
                     
                     for (const line of lines) {
                       if (!line.trim()) continue;

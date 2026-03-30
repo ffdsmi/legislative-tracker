@@ -5,21 +5,48 @@ import { requireSession } from '@/lib/session';
 import { decodeText } from '@/lib/legiscan';
 import { stripHtml } from '@/lib/diff-engine';
 import { isPdfContent, extractPdfText } from '@/lib/pdf-extract';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 
 export async function POST(request) {
   try {
     const session = await requireSession();
     const formData = await request.formData();
-    const file = formData.get('dataset');
     
-    if (!file) {
-      return NextResponse.json({ error: 'No dataset file deployed.' }, { status: 400 });
+    // --- CHUNKED UPLOAD HANDLING ---
+    const chunk = formData.get('chunk');
+    if (chunk) {
+      const fileId = formData.get('fileId');
+      const chunkIndex = parseInt(formData.get('chunkIndex'), 10);
+      const tempPath = path.join(os.tmpdir(), `dataset_${fileId}.zip`);
+      
+      const buffer = Buffer.from(await chunk.arrayBuffer());
+      
+      // If it's the first chunk, ensure we start with a fresh file
+      if (chunkIndex === 0) {
+        fs.writeFileSync(tempPath, buffer);
+      } else {
+        fs.appendFileSync(tempPath, buffer);
+      }
+      
+      return NextResponse.json({ success: true, chunkIndex });
     }
 
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    
-    console.log(`[DATASET INGEST] Extracted FormData ArrayBuffer size: ${buffer.length} bytes`);
+    // --- PROCESSING HANDLING ---
+    const processFileId = formData.get('processFileId');
+    if (!processFileId) {
+      return NextResponse.json({ error: 'No processFileId or chunk provided.' }, { status: 400 });
+    }
+
+    const tempPath = path.join(os.tmpdir(), `dataset_${processFileId}.zip`);
+    if (!fs.existsSync(tempPath)) {
+      return NextResponse.json({ error: `File not found on server temp disk: ${tempPath}` }, { status: 400 });
+    }
+
+    // Read the fully assembled file from disk!
+    const buffer = fs.readFileSync(tempPath);
+    console.log(`[DATASET INGEST] Read assembled ZIP from disk: ${buffer.length} bytes`);
 
     const encoder = new TextEncoder();
     
@@ -31,7 +58,7 @@ export async function POST(request) {
         };
 
         try {
-          sendUpdate({ type: 'start', message: 'Unpacking ZIP archive in memory...' });
+          sendUpdate({ type: 'start', message: 'Unpacking ZIP archive into memory...' });
           
           const zip = new AdmZip(buffer);
           const zipEntries = zip.getEntries();
@@ -138,8 +165,11 @@ export async function POST(request) {
             type: 'done', 
             message: `Success: Migrated ${processedCount} bills and ${textProcessedCount} mapped text PDFs into the database.` 
           });
+          
+          try { fs.unlinkSync(tempPath); } catch(ex) { /* cleanup */ }
         } catch (err) {
           sendUpdate({ type: 'error', message: `ZIP Fault: ${err.message}` });
+          try { fs.unlinkSync(tempPath); } catch(ex) { /* cleanup */ }
         } finally {
           controller.close();
         }
