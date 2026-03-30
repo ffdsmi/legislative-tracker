@@ -75,47 +75,49 @@ export default function WatchlistPage() {
             <p style={{ color: 'var(--text-secondary)' }}>Loading watchlist...</p>
           </div>
         ) : filtered.length > 0 ? (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Bill</th>
-                <th>Title</th>
-                <th>Position</th>
-                <th>Added</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((item) => (
-                <tr key={item.billId}>
-                  <td>
-                    <Link href={`/bills/${item.billId}`} className="bill-number">{item.billNumber}</Link>
-                  </td>
-                  <td className="bill-title">{item.title}</td>
-                  <td>
-                    <select
-                      className="filter-select"
-                      value={item.position || 'watch'}
-                      onChange={(e) => handlePositionChange(item.billId, e.target.value)}
-                      style={{ minWidth: 100 }}
-                    >
-                      <option value="support">Support</option>
-                      <option value="oppose">Oppose</option>
-                      <option value="watch">Watch</option>
-                    </select>
-                  </td>
-                  <td style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
-                    {item.addedAt ? new Date(item.addedAt).toLocaleDateString() : '—'}
-                  </td>
-                  <td>
-                    <button className="btn btn-ghost btn-sm" onClick={() => handleRemove(item.billId)} style={{ color: 'var(--color-oppose)' }}>
-                      Remove
-                    </button>
-                  </td>
+          <div className="table-responsive">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Bill</th>
+                  <th>Title</th>
+                  <th>Position</th>
+                  <th>Added</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map((item) => (
+                  <tr key={item.billId}>
+                    <td>
+                      <Link href={`/bills/${item.billId}`} className="bill-number">{item.billNumber}</Link>
+                    </td>
+                    <td className="bill-title">{item.title}</td>
+                    <td>
+                      <select
+                        className="filter-select"
+                        value={item.position || 'watch'}
+                        onChange={(e) => handlePositionChange(item.billId, e.target.value)}
+                        style={{ minWidth: 100 }}
+                      >
+                        <option value="support">Support</option>
+                        <option value="oppose">Oppose</option>
+                        <option value="watch">Watch</option>
+                      </select>
+                    </td>
+                    <td style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
+                      {item.addedAt ? new Date(item.addedAt).toLocaleDateString() : '—'}
+                    </td>
+                    <td>
+                      <button className="btn btn-ghost btn-sm" onClick={() => handleRemove(item.billId)} style={{ color: 'var(--color-oppose)' }}>
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <div className="empty-state">
             <div className="empty-state-icon">👁</div>

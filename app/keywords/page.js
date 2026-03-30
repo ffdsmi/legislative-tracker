@@ -86,40 +86,42 @@ export default function KeywordsPage() {
             <p style={{ color: 'var(--text-secondary)' }}>Loading keywords...</p>
           </div>
         ) : keywords.length > 0 ? (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Keyword</th>
-                <th>Jurisdiction</th>
-                <th>Matches</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {keywords.map((kw) => (
-                <tr key={kw.id} style={{ opacity: kw.active ? 1 : 0.5 }}>
-                  <td><strong>{kw.term}</strong></td>
-                  <td>{kw.jurisdiction === 'ALL' ? 'All' : kw.jurisdiction}</td>
-                  <td>{kw.matchCount || 0}</td>
-                  <td>
-                    <button
-                      className={`btn btn-ghost btn-sm`}
-                      onClick={() => handleToggle(kw.id, kw.active)}
-                      style={{ color: kw.active ? 'var(--color-support)' : 'var(--text-muted)' }}
-                    >
-                      {kw.active ? '● Active' : '○ Paused'}
-                    </button>
-                  </td>
-                  <td>
-                    <button className="btn btn-ghost btn-sm" onClick={() => handleDelete(kw.id)} style={{ color: 'var(--color-oppose)' }}>
-                      Delete
-                    </button>
-                  </td>
+          <div className="table-responsive">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Keyword</th>
+                  <th>Jurisdiction</th>
+                  <th>Matches</th>
+                  <th>Status</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {keywords.map((kw) => (
+                  <tr key={kw.id} style={{ opacity: kw.active ? 1 : 0.5 }}>
+                    <td><strong>{kw.term}</strong></td>
+                    <td>{kw.jurisdiction === 'ALL' ? 'All' : kw.jurisdiction}</td>
+                    <td>{kw.matchCount || 0}</td>
+                    <td>
+                      <button
+                        className={`btn btn-ghost btn-sm`}
+                        onClick={() => handleToggle(kw.id, kw.active)}
+                        style={{ color: kw.active ? 'var(--color-support)' : 'var(--text-muted)' }}
+                      >
+                        {kw.active ? '● Active' : '○ Paused'}
+                      </button>
+                    </td>
+                    <td>
+                      <button className="btn btn-ghost btn-sm" onClick={() => handleDelete(kw.id)} style={{ color: 'var(--color-oppose)' }}>
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <div className="empty-state">
             <div className="empty-state-icon">🔑</div>

@@ -47,3 +47,12 @@ survey_page*.png
 next-env.d.ts
 
 .vercel
+
+/lib/generated/prisma
+
+.env*.local
+.data/
+*.db
+*.pdf
+*.png
+*.log

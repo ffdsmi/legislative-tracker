@@ -1,0 +1,372 @@
+// This is your Prisma schema file.
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Identity & Hierarchy ──────────────────────────────────────
+
+model Workspace {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users       User[]
+  bills       Bill[]
+  texts       BillText[]
+  diffs       BillDiff[]
+  testimonies Testimony[]
+  tags        Tag[]
+  collections Collection[]
+  watchlists  Watchlist[]
+  keywords    Keyword[]
+  alerts      Alert[]
+  markups     Markup[]
+  annotations Annotation[]
+  settings    Settings?
+  legislators Legislator[]
+  dockets     Docket[]
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  role         String   @default("USER") // ADMIN, USER
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  testimonies Testimony[]
+  comments    Comment[]
+}
+
+// ─── Legislative Data ──────────────────────────────────────────
+
+model Bill {
+  id             String   @id // LegiScan Bill ID
+  workspaceId    String
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  state          String
+  session        String?
+  number         String
+  title          String
+  description    String?
+  status         Int?
+  statusDate     String?
+  lastAction     String?
+  lastActionDate String?
+  url            String?
+  stateLink      String?
+  jurisdiction   String?
+
+  // Storing complex arrays as JSON strings for flexibility
+  sponsors       String? // JSON string
+  subjects       String? // JSON string
+  history        String? // JSON string
+  changeHash     String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tags           BillTag[]
+  collections    BillCollection[]
+  texts          BillText[]
+  watchlists     Watchlist[]
+  sponsorsList   LegislatorBill[]
+
+  @@unique([id, workspaceId])
+}
+
+model BillText {
+  id          String   @id @default(uuid())
+  docId       String
+  billId      String
+  workspaceId String
+
+  bill        Bill      @relation(fields: [billId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  text        String
+  date        String?
+  type        String?
+  url         String?
+
+  savedAt     DateTime @default(now())
+
+  @@unique([docId, workspaceId])
+}
+
+model Legislator {
+  id               String   @id @default(uuid())
+  workspaceId      String
+  peopleId         Int
+  name             String
+  firstName        String?
+  lastName         String?
+  party            String?
+  role             String?
+  district         String?
+  state            String?
+  imageUrl         String?
+  imageUpdatedAt   DateTime?
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sponsoredBills   LegislatorBill[]
+
+  @@unique([workspaceId, peopleId])
+}
+
+model LegislatorBill {
+  legislatorId String
+  billId       String
+  workspaceId  String
+
+  legislator   Legislator @relation(fields: [legislatorId], references: [id], onDelete: Cascade)
+  bill         Bill       @relation(fields: [billId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+
+  @@id([legislatorId, billId])
+}
+
+model BillDiff {
+  id          String   @id @default(uuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  billId      String
+  oldDocId    String
+  newDocId    String
+
+  // Storing diff arrays as JSON string
+  changes     String // JSON array of chunks
+  additions   Int
+  deletions   Int
+
+  createdAt   DateTime @default(now())
+
+  @@unique([workspaceId, billId, oldDocId, newDocId])
+}
+
+// ─── Advocacy & Engagement ─────────────────────────────────────
+
+model Watchlist {
+  id          String   @id @default(uuid())
+  workspaceId String
+  billId      String
+  position    String   // support, oppose, watch, neutral
+  addedAt     DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  bill        Bill      @relation(fields: [billId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+
+  @@unique([workspaceId, billId])
+}
+
+model Tag {
+  id          String   @id @default(uuid())
+  workspaceId String
+  name        String
+  color       String
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  bills       BillTag[]
+
+  @@unique([workspaceId, name])
+}
+
+model BillTag {
+  billId      String
+  tagId       String
+  workspaceId String
+
+  bill        Bill      @relation(fields: [billId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  tag         Tag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([billId, tagId])
+}
+
+model Collection {
+  id          String   @id @default(uuid())
+  workspaceId String
+  name        String
+  description String?
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  bills       BillCollection[]
+
+  @@unique([workspaceId, name])
+}
+
+model BillCollection {
+  billId       String
+  collectionId String
+  workspaceId  String
+
+  bill       Bill       @relation(fields: [billId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@id([billId, collectionId])
+}
+
+model Testimony {
+  id               String   @id @default(uuid())
+  workspaceId      String
+  userId           String
+
+  billId           String?
+  billNumber       String?
+  billTitle        String?
+  sectionRef       String?
+
+  title            String
+  authorName       String?
+  jobTitle         String?
+  organization     String?
+  committeeDate    String?
+  position         String?
+
+  body             String // JSON string of TipTap content
+  status           String @default("draft") // draft, final
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Annotation {
+  id           String   @id @default(uuid())
+  workspaceId  String
+  billId       String
+  
+  selectedText String
+  note         String
+  startOffset  Int
+  endOffset    Int
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  comments     Comment[]
+}
+
+model Comment {
+  id           String   @id @default(uuid())
+  annotationId String
+  parentCommentId String?
+  userId       String
+  body         String
+  createdAt    DateTime @default(now())
+
+  annotation   Annotation @relation(fields: [annotationId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Markup {
+  id            String   @id @default(uuid())
+  workspaceId   String
+  billId        String
+  
+  type          String   // highlight, strikethrough, suggest
+  selectedText  String
+  startOffset   Int
+  endOffset     Int
+  
+  suggestedText String?
+  color         String?
+
+  createdAt     DateTime @default(now())
+
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+// ─── Monitoring & Alerts ───────────────────────────────────────
+
+model Keyword {
+  id          String   @id @default(uuid())
+  workspaceId String
+  term        String
+  active      Boolean  @default(true)
+  matchCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, term])
+}
+
+model Alert {
+  id          String   @id @default(uuid())
+  workspaceId String
+
+  type        String   // bill_updated, keyword_match, etc.
+  title       String?  // The display title of the alert
+  message     String
+  billId      String?
+  keyword     String?  // Optional keyword that triggered this
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model Settings {
+  id          String   @id @default(uuid())
+  workspaceId String   @unique
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  legiscanApiKey    String?
+  congressApiKey    String?
+  regulationsApiKey String? // api.data.gov standard key
+  openStatesApiKey  String?
+  pollingInterval Int @default(24) // in minutes based on latest logic
+  jurisdictions   String? // JSON array of states ['US', 'TX']
+
+  smtpHost        String?
+  smtpPort        Int?
+  smtpUser        String?
+  smtpPass        String?
+  senderEmail     String?
+  digestSchedule  String? // daily, weekly, never
+  datasetTracker  String? // JSON object storing dataset hash sync states
+  lastIngestAt    DateTime? // Track background ingestion
+}
+
+// ─── Regulatory Data ──────────────────────────────────────────
+
+model Docket {
+  id              String   @id // Regulations.gov Docket ID (e.g., NCUA-2026-0014)
+  workspaceId     String
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  agency          String   // e.g., NCUA or CFPB
+  title           String
+  type            String   // Notice, Proposed Rule, Rule
+  commentEndDate  String?  // Keep as string (YYYY-MM-DD or datetime string) or DateTime
+  status          String   // Open for Comment, Closed
+  documentUrl     String?  // Link to the docket on regulations.gov
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([id, workspaceId])
+}

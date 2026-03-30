@@ -1,18 +1,24 @@
 import { NextResponse } from 'next/server';
 import { getBill, getBillText, decodeText } from '@/lib/legiscan';
 import { getSettings } from '@/lib/settings';
+import { loadTextVersion } from '@/lib/store';
+import { stripHtml } from '@/lib/diff-engine';
+import { isPdfContent, extractPdfText } from '@/lib/pdf-extract';
+import { requireSession } from '@/lib/session';
 
 // GET /api/bills/[id] — get full bill detail from LegiScan
 export async function GET(request, { params }) {
-  const settings = getSettings();
-  if (!settings.legiscanApiKey) {
-    return NextResponse.json({ error: 'LegiScan API key not configured.' }, { status: 200 });
-  }
-
-  const { id } = await params;
-
   try {
-    const bill = await getBill(id);
+    const session = await requireSession();
+    const settings = await getSettings(session.workspaceId);
+    
+    if (!settings.legiscanApiKey) {
+      return NextResponse.json({ error: 'LegiScan API key not configured.' }, { status: 200 });
+    }
+
+    const { id } = await params;
+
+    const bill = await getBill(session.workspaceId, id);
     if (!bill) {
       return NextResponse.json({ error: 'Bill not found' }, { status: 404 });
     }
@@ -23,15 +29,43 @@ export async function GET(request, { params }) {
       // Only fetch text for the first 3 versions to save API calls
       for (const textInfo of bill.texts.slice(0, 3)) {
         try {
-          const textData = await getBillText(textInfo.doc_id);
+          // 1. Try to load historically ingested formatted plain text
+          const localText = await loadTextVersion(session.workspaceId, bill.bill_id, textInfo.doc_id);
+          if (localText) {
+            versions.push({
+              docId: textInfo.doc_id,
+              date: textInfo.date,
+              type: textInfo.type,
+              mimeId: textInfo.mime,
+              url: textInfo.state_link || textInfo.url,
+              text: localText.text,
+            });
+            continue;
+          }
+
+          // 2. Fallback to live extraction
+          const textData = await getBillText(session.workspaceId, textInfo.doc_id);
+          let finalText = null;
+          let mimeId = textInfo.mime;
+          
+          if (textData && textData.doc) {
+            mimeId = textData.mime || textInfo.mime;
+            const decoded = decodeText(textData.doc);
+            if (isPdfContent(decoded)) {
+              const pdfBuffer = Buffer.from(textData.doc, 'base64');
+              finalText = await extractPdfText(pdfBuffer);
+            } else {
+              finalText = stripHtml(decoded);
+            }
+          }
+
           versions.push({
             docId: textInfo.doc_id,
             date: textInfo.date,
             type: textInfo.type,
-            mimeType: textInfo.mime,
+            mimeId: mimeId,
             url: textInfo.state_link || textInfo.url,
-            text: textData ? decodeText(textData.doc) : null,
-            mimeId: textData ? textData.mime : null,
+            text: finalText,
           });
         } catch {
           versions.push({
@@ -84,6 +118,10 @@ export async function GET(request, { params }) {
       versions,
     });
   } catch (err) {
+    if (err.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     return NextResponse.json({ error: err.message }, { status: 200 });
   }
 }
+
+export const dynamic = 'force-dynamic';
+
