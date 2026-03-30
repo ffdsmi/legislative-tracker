@@ -647,11 +647,39 @@ export default function SettingsPage() {
                     method: 'POST',
                     body: formData
                   });
-                  const data = await res.json();
-                  if (data.success) {
-                    setDatasetResult(`Success: Migrated ${data.count} bills into the database.`);
-                  } else {
-                    setDatasetResult(`Error: ${data.error}`);
+
+                  if (!res.ok) {
+                    const errorData = await res.json().catch(() => ({}));
+                    throw new Error(errorData.error || `HTTP ${res.status}`);
+                  }
+                  
+                  const reader = res.body.getReader();
+                  const decoder = new TextDecoder();
+                  let buffer = '';
+                  
+                  while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+                    
+                    for (const line of lines) {
+                      if (!line.trim()) continue;
+                      try {
+                        const event = JSON.parse(line);
+                        if (event.type === 'start') {
+                          setDatasetResult('Processing file scan...');
+                        } else if (event.type === 'progress') {
+                          setDatasetResult(event.message);
+                        } else if (event.type === 'done') {
+                          setDatasetResult(event.message);
+                        } else if (event.type === 'error') {
+                          setDatasetResult(`Error: ${event.message}`);
+                        }
+                      } catch(e) { /* ignore JSON parse error for incomplete chunks */ }
+                    }
                   }
                 } catch (err) {
                   setDatasetResult(`Upload failed: ${err.message}`);
