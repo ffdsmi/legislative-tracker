@@ -49,9 +49,16 @@ export default function CollectionDetailPage() {
         ← Back to Collections
       </Link>
 
-      <div className="page-header fade-in">
-        <h1>📁 {collection?.name || 'Collection'}</h1>
-        {collection?.description && <p>{collection.description}</p>}
+      <div className="page-header fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
+        <div>
+          <h1 style={{ margin: 0, marginBottom: 'var(--space-1)' }}>📁 {collection?.name || 'Collection'}</h1>
+          {collection?.description && <p style={{ margin: 0, color: 'var(--text-secondary)' }}>{collection.description}</p>}
+        </div>
+        <div>
+          <Link href={`/collections/${id}/advocacy`} className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <span>📄 Build Advocacy Packet</span>
+          </Link>
+        </div>
       </div>
 
       <div className="card fade-in">

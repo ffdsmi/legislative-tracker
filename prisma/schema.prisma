@@ -225,6 +225,11 @@ model BillCollection {
   bill       Bill       @relation(fields: [billId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
   collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
 
+  // Advocacy Packet Fields
+  targetStance   String?
+  talkingPoints  String?
+  considerations String?
+
   @@id([billId, collectionId])
 }
 
