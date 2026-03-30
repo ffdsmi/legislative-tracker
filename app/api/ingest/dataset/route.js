@@ -9,13 +9,24 @@ import { isPdfContent, extractPdfText } from '@/lib/pdf-extract';
 export async function POST(request) {
   try {
     const session = await requireSession();
-    const arrayBuffer = await request.arrayBuffer();
+    // We must manually consume the raw ReadableStream to bypass Next.js internal 10MB limits on request.arrayBuffer()
+    const reader = request.body.getReader();
+    const chunks = [];
+    let length = 0;
     
-    if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      length += value.length;
+    }
+    const buffer = Buffer.concat(chunks, length);
+    
+    console.log(`[DATASET INGEST] Read raw stream of size: ${length} bytes`);
+    
+    if (length === 0) {
       return NextResponse.json({ error: 'No dataset file provided or file is empty.' }, { status: 400 });
     }
-
-    const buffer = Buffer.from(arrayBuffer);
 
     const encoder = new TextEncoder();
     

@@ -625,7 +625,6 @@ export default function SettingsPage() {
             <label style={{ display: 'flex', justifyContent: 'space-between' }}>
               Upload ZIP Archive
               <a href="https://legiscan.com/datasets" target="_blank" rel="noopener noreferrer" style={{ fontSize: 'var(--text-xs)', color: 'var(--accent)' }}>
-                Download from LegiScan ↗
               </a>
             </label>
             <input 
@@ -636,14 +635,16 @@ export default function SettingsPage() {
               onChange={async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
-                setDatasetLoading(true);
-                setDatasetResult(null);
-                
                 try {
+                  setDatasetLoading(true);
+                  setDatasetResult(null);
+                  
+                  const formData = new FormData();
+                  formData.append('dataset', file);
+                  
                   const res = await fetch('/api/ingest/dataset', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/octet-stream' },
-                    body: file
+                    body: formData
                   });
 
                   if (!res.ok) {
