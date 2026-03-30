@@ -1,5 +1,6 @@
 import './globals.css';
 import ClientLayout from '@/components/ClientLayout';
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata = {
   title: 'LegisTracker — Legislative Document Monitor',
@@ -11,6 +12,7 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body>
         <ClientLayout>{children}</ClientLayout>
+        <Analytics />
       </body>
     </html>
   );
