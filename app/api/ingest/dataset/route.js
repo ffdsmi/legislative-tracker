@@ -9,14 +9,12 @@ import { isPdfContent, extractPdfText } from '@/lib/pdf-extract';
 export async function POST(request) {
   try {
     const session = await requireSession();
-    const formData = await request.formData();
-    const file = formData.get('dataset');
-
-    if (!file) {
-      return NextResponse.json({ error: 'No dataset file deployed.' }, { status: 400 });
+    const arrayBuffer = await request.arrayBuffer();
+    
+    if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+      return NextResponse.json({ error: 'No dataset file provided or file is empty.' }, { status: 400 });
     }
 
-    const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
     const encoder = new TextEncoder();

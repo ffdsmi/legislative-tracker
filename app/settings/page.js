@@ -639,13 +639,11 @@ export default function SettingsPage() {
                 setDatasetLoading(true);
                 setDatasetResult(null);
                 
-                const formData = new FormData();
-                formData.append('dataset', file);
-                
                 try {
                   const res = await fetch('/api/ingest/dataset', {
                     method: 'POST',
-                    body: formData
+                    headers: { 'Content-Type': 'application/octet-stream' },
+                    body: file
                   });
 
                   if (!res.ok) {
