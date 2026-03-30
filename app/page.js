@@ -34,24 +34,20 @@ export default function DashboardPage() {
       setHasApiKey(settings.hasLegiscanKey || false);
       setTrackedJurisdictions(settings.trackedJurisdictions || []);
 
-      // Fetch watchlist bill details for pipeline
+      // Instantly load watchlist pipeline from DB response instead of LegiScan
       const watchItems = watchlist.items || [];
       if (watchItems.length > 0) {
-        Promise.all(
-          watchItems.map(w =>
-            fetch(`/api/bills/${w.billId}`).then(r => r.json()).then(d => ({
-              ...d.bill,
-              watchPosition: w.position,
-              billId: w.billId,
-            })).catch(() => null)
-          )
-        ).then(bills => {
-          setWatchlistBills(bills.filter(Boolean));
-          setIsLoadingStats(false);
-        });
-      } else {
-        setIsLoadingStats(false);
+        setWatchlistBills(watchItems.map(w => ({
+          id: w.billId,
+          billId: w.billId,
+          number: w.billNumber,
+          title: w.title,
+          jurisdiction: w.jurisdiction,
+          status: w.status,
+          watchPosition: w.position,
+        })));
       }
+      setIsLoadingStats(false);
     }).catch(() => {
       setIsLoadingStats(false);
     });
