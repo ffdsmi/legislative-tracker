@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import AdmZip from 'adm-zip';
-import { saveBill } from '@/lib/store';
+import { saveBill, saveTextVersion } from '@/lib/store';
 import { requireSession } from '@/lib/session';
+import { decodeText } from '@/lib/legiscan';
+import { stripHtml } from '@/lib/diff-engine';
+import { isPdfContent, extractPdfText } from '@/lib/pdf-extract';
 
 // POST /api/ingest/dataset -> Extract a LegiScan ZIP and backfill 100% of the JSON data locally.
 export async function POST(request) {
@@ -21,11 +24,14 @@ export async function POST(request) {
     const zip = new AdmZip(buffer);
     const zipEntries = zip.getEntries();
     
-    let processedCount = 0;
+    const billEntries = zipEntries.filter(e => !e.isDirectory && e.entryName.includes('bill/') && e.entryName.endsWith('.json'));
+    const textEntries = zipEntries.filter(e => !e.isDirectory && e.entryName.includes('text/') && e.entryName.endsWith('.json'));
 
-    for (const entry of zipEntries) {
-      // LegiScan structural standard places all discrete bill objects inside the `bill/` directory as raw .json
-      if (!entry.isDirectory && entry.entryName.includes('bill/') && entry.entryName.endsWith('.json')) {
+    let processedCount = 0;
+    let textProcessedCount = 0;
+
+    for (const entry of billEntries) {
+      try {
         const content = entry.getData().toString('utf8');
         const data = JSON.parse(content);
         
@@ -57,10 +63,40 @@ export async function POST(request) {
           });
           processedCount++;
         }
+      } catch (e) {
+        // Skip malformed entries
       }
     }
 
-    return NextResponse.json({ success: true, count: processedCount });
+    for (const entry of textEntries) {
+      try {
+        const content = entry.getData().toString('utf8');
+        const data = JSON.parse(content);
+        if (data && data.text) {
+          const textInfo = data.text;
+          const decoded = decodeText(textInfo.doc);
+          
+          let plainText;
+          if (isPdfContent(decoded)) {
+            const pdfBuffer = Buffer.from(textInfo.doc, 'base64');
+            plainText = await extractPdfText(pdfBuffer);
+          } else {
+            plainText = stripHtml(decoded);
+          }
+          
+          await saveTextVersion(session.workspaceId, textInfo.bill_id, textInfo.doc_id, plainText, {
+            date: textInfo.date,
+            type: textInfo.name || textInfo.type,
+            mime: textInfo.mime,
+          });
+          textProcessedCount++;
+        }
+      } catch(e) {
+        // Skip malformed textual extracts
+      }
+    }
+
+    return NextResponse.json({ success: true, count: processedCount, textCount: textProcessedCount });
   } catch (err) {
     console.error('ZIP backfill failed:', err);
     if (err.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -69,4 +105,4 @@ export async function POST(request) {
 }
 
 export const dynamic = 'force-dynamic';
-
+export const maxDuration = 60;

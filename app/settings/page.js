@@ -622,7 +622,12 @@ export default function SettingsPage() {
           <h3><span aria-hidden="true">📦</span> LegiScan Dataset Backfill</h3>
           <p>Upload a Weekly Dataset ZIP from LegiScan to instantly prepopulate the local database without burning Free Tier API limits. Ensure you download the JSON format.</p>
           <div className="input-group">
-            <label>Upload ZIP Archive</label>
+            <label style={{ display: 'flex', justifyContent: 'space-between' }}>
+              Upload ZIP Archive
+              <a href="https://legiscan.com/datasets" target="_blank" rel="noopener noreferrer" style={{ fontSize: 'var(--text-xs)', color: 'var(--accent)' }}>
+                Download from LegiScan ↗
+              </a>
+            </label>
             <input 
               type="file" 
               accept=".zip"
