@@ -29,6 +29,7 @@ export async function POST(request) {
 
     let processedCount = 0;
     let textProcessedCount = 0;
+    const saveErrors = [];
 
     for (const entry of billEntries) {
       try {
@@ -64,7 +65,7 @@ export async function POST(request) {
           processedCount++;
         }
       } catch (e) {
-        // Skip malformed entries
+        saveErrors.push(`Bill Save Failed: ${e.message}`);
       }
     }
 
@@ -92,8 +93,17 @@ export async function POST(request) {
           textProcessedCount++;
         }
       } catch(e) {
-        // Skip malformed textual extracts
+        saveErrors.push(`Text Parse Failed: ${e.message}`);
       }
+    }
+
+    if (processedCount === 0 && saveErrors.length > 0) {
+      return NextResponse.json({ success: false, error: `Dataset parsing failed database insertion. First error: ${saveErrors[0]}` });
+    }
+
+    if (processedCount === 0 && textProcessedCount === 0) {
+      const sample = zipEntries.slice(0, 5).map(e => e.entryName).join(', ');
+      return NextResponse.json({ success: false, error: `Found 0 matching files in root structure. Are you absolutely certain you extracted the JSON dataset and not the CSV? Content sample: [${sample}]` });
     }
 
     return NextResponse.json({ success: true, count: processedCount, textCount: textProcessedCount });
