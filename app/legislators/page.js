@@ -342,7 +342,7 @@ export default function LegislatorsPage() {
                         ))}
                       </div>
                     ) : (
-                      <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>No active committees detected via OpenStates API.</div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>No active committees detected via Capitol APIs.</div>
                     )}
                   </div>
 

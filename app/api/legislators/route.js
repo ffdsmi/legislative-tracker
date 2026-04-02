@@ -19,9 +19,10 @@ export async function GET(req) {
       if (!leg) return NextResponse.json({ error: 'Not found' }, { status: 404 });
       const bills = await getLegislatorBills(session.workspaceId, id);
       
-      // Dynamic Hydration via OpenStates
-      let osData = null;
+      // Dynamic Hydration via OpenStates or Congress.gov
+      let osData = { contactDetails: [], links: [], roles: [] };
       const settings = await getSettings(session.workspaceId);
+      
       if (settings?.openStatesApiKey && leg.state && leg.state !== 'US') {
         try {
           const url = `https://v3.openstates.org/people?jurisdiction=${leg.state}&name=${encodeURIComponent(leg.name)}&include=other_names&include=links&include=sources&include=offices`; // Include rich expansions if supported by V3, or just fetch base.
@@ -38,8 +39,37 @@ export async function GET(req) {
             }
           }
         } catch (e) {
-          console.error("Hydration Error:", e);
+          console.error("OS Hydration Error:", e);
         }
+      } else if (settings?.congressApiKey && leg.state === 'US' && leg.imageUrl?.includes('bioguide')) {
+         // Congress.gov Fallback for Federal Legislators
+         try {
+            const bioguideId = leg.imageUrl.split('/').pop().replace('.jpg', '');
+            const url = `https://api.congress.gov/v3/member/${bioguideId}?api_key=${settings.congressApiKey}&format=json`;
+            const cRes = await fetch(url);
+            if (cRes.ok) {
+              const data = await cRes.json();
+              if (data?.member) {
+                 const m = data.member;
+                 
+                 // Map to OS Format for the UI
+                 if (m.addressInformation) {
+                    osData.contactDetails.push({ 
+                       type: 'Capitol Office', 
+                       value: `${m.addressInformation.officeAddress}\n${m.addressInformation.city}, DC ${m.addressInformation.officeZip}` 
+                    });
+                    if (m.addressInformation.phoneNumber) {
+                        osData.contactDetails.push({ type: 'Voice', value: m.addressInformation.phoneNumber });
+                    }
+                 }
+                 if (m.officialWebsiteUrl) {
+                    osData.links.push({ url: m.officialWebsiteUrl, note: 'Official Website' });
+                 }
+              }
+            }
+         } catch(e) {
+            console.error("Congress Hydration Error:", e);
+         }
       }
 
       return NextResponse.json({ 
