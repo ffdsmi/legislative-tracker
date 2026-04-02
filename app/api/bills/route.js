@@ -82,7 +82,7 @@ export async function GET(request) {
 
   } catch (err) {
     if (err.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    return NextResponse.json({ error: err.message, bills: [] }, { status: 200 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? err.message : 'An unexpected error occurred', bills: [] }, { status: 200 });
   }
 }
 

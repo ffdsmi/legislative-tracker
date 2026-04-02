@@ -25,7 +25,7 @@ export async function POST(request) {
     return NextResponse.json({ success: true, keyword }, { status: 201 });
   } catch (err) {
     if (err.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    return NextResponse.json({ error: err.message }, { status: 400 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? err.message : 'An unexpected error occurred' }, { status: 400 });
   }
 }
 
@@ -38,7 +38,7 @@ export async function PUT(request) {
     return NextResponse.json({ success: true, keywords: list });
   } catch (err) {
     if (err.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    return NextResponse.json({ error: err.message }, { status: 400 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? err.message : 'An unexpected error occurred' }, { status: 400 });
   }
 }
 
@@ -52,7 +52,7 @@ export async function DELETE(request) {
     return NextResponse.json({ success: true, keywords: list });
   } catch (err) {
     if (err.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    return NextResponse.json({ error: err.message }, { status: 400 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? err.message : 'An unexpected error occurred' }, { status: 400 });
   }
 }
 

@@ -22,7 +22,7 @@ export async function POST(request, { params }) {
     return NextResponse.json({ success: true });
   } catch (err) {
     if (err.message === 'Unauthorized') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    return NextResponse.json({ error: err.message }, { status: 400 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? err.message : 'An unexpected error occurred' }, { status: 400 });
   }
 }
 

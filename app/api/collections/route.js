@@ -26,7 +26,7 @@ export async function POST(request) {
     const collection = await createCollection(session.workspaceId, { name: body.name, description: body.description });
     return NextResponse.json({ collection });
   } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 400 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? err.message : 'An unexpected error occurred' }, { status: 400 });
   }
 }
 
@@ -40,7 +40,7 @@ export async function PUT(request) {
     const updated = await updateCollection(session.workspaceId, body.id, { name: body.name, description: body.description });
     return NextResponse.json({ collection: updated });
   } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 400 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? err.message : 'An unexpected error occurred' }, { status: 400 });
   }
 }
 

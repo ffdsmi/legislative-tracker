@@ -132,6 +132,7 @@ API keys are managed through an in-app Settings page and stored in the local dat
 | Shareable Links | ⏳ Deferred | Read-only URLs for annotated bill views (public sharing) - pending email integration |
 | Multi-User Support | ✅ Done | User accounts, role-based access, shared Prisma workspaces |
 | Responsive Polish | ✅ Done | Mobile-first layout refinements, touch interactions |
+| Advanced PDF Engine | ⬜ Todo | Enhanced server-side Puppeteer engine for heavily branded, deterministic advocacy print packets (replacing browser print flows) |
 
 ---
 

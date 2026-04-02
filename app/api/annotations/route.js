@@ -27,7 +27,7 @@ export async function POST(request) {
     const annotation = await createAnnotation(session.workspaceId, { billId, versionDocId, startOffset, endOffset, selectedText, note });
     return NextResponse.json({ annotation });
   } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 400 });
+    return NextResponse.json({ error: process.env.NODE_ENV === 'development' ? err.message : 'An unexpected error occurred' }, { status: 400 });
   }
 }
 
