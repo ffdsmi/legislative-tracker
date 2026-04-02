@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
 import { saveLegislator, getLegislator } from '@/lib/legislators';
+import { db } from '@/lib/db';
 import { requireSession } from '@/lib/session';
 import { getSettings } from '@/lib/settings';
 
@@ -12,28 +11,34 @@ export async function POST() {
     const settings = await getSettings(workspaceId);
     const osKey = settings?.openStatesApiKey;
 
-    const billsDir = path.join(process.cwd(), '.data', 'bills');
-    if (!fs.existsSync(billsDir)) {
-      return NextResponse.json({ success: true, count: 0 });
-    }
+    // Extract all tracked bills from the database dynamically
+    const bills = await db.bill.findMany({
+      where: { workspaceId },
+      select: { id: true, jurisdiction: true, session: true, sponsors: true }
+    });
     
-    const files = fs.readdirSync(billsDir).filter(f => f.endsWith('.json'));
-    
-    // First Pass: Aggregate unique sponsors across all 1800+ bills and perfectly assemble their sponsoredBillIds lists
+    // First Pass: Aggregate unique sponsors across all database bills and perfectly assemble their sponsoredBillIds lists
     const uniqueSponsorsMap = new Map();
-    for (const file of files) {
-      const billData = JSON.parse(fs.readFileSync(path.join(billsDir, file), 'utf-8'));
-      if (billData.sponsors && Array.isArray(billData.sponsors)) {
-        for (const sp of billData.sponsors) {
+
+    for (const bill of bills) {
+      let sponsors = [];
+      try { sponsors = typeof bill.sponsors === 'string' ? JSON.parse(bill.sponsors) : bill.sponsors || []; } catch(e) {}
+      
+      if (Array.isArray(sponsors)) {
+        for (const sp of sponsors) {
           if (sp.people_id) {
             if (!uniqueSponsorsMap.has(sp.people_id)) {
+              // Extract state. Wait, the state property is missing on bills! No, jurisdiction holds it.
+              // We also have state inside sp if it happens to be present.
+              const ruleState = bill.jurisdiction || sp.state || 'US';
+              
               uniqueSponsorsMap.set(sp.people_id, {
                 ...sp,
-                state: billData.jurisdiction || billData.state,
+                state: ruleState,
                 bill_ids: new Set()
               });
             }
-            uniqueSponsorsMap.get(sp.people_id).bill_ids.add(billData.id || billData.bill_id);
+            uniqueSponsorsMap.get(sp.people_id).bill_ids.add(bill.id);
           }
         }
       }

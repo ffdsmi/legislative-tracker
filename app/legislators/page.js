@@ -45,10 +45,14 @@ export default function LegislatorsPage() {
       .then(r => r.json())
       .then(data => {
         if (data.trackedJurisdictions) {
-          setTrackedStates(data.trackedJurisdictions);
+          const list = [...data.trackedJurisdictions];
+          if (!list.includes('US')) list.push('US');
+          setTrackedStates(list);
+        } else {
+          setTrackedStates(['US']);
         }
       })
-      .catch(() => {});
+      .catch(() => { setTrackedStates(['US']); });
   }, []);
 
   useEffect(() => {
