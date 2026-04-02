@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
-export default function RegulationsPage() {
-  const [searchTerm, setSearchTerm] = useState('');
+function RegulationsContent() {
+  const searchParams = useSearchParams();
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
   const [agencyFilter, setAgencyFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [typeFilter, setTypeFilter] = useState('ALL');
@@ -243,5 +245,13 @@ export default function RegulationsPage() {
         )}
       </div>
     </>
+  );
+}
+
+export default function RegulationsPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 'var(--space-8)', textAlign: 'center' }}>Loading...</div>}>
+      <RegulationsContent />
+    </Suspense>
   );
 }
