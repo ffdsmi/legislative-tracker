@@ -47,28 +47,28 @@ export async function GET(req) {
             const bioguideId = leg.imageUrl.split('/').pop().replace('.jpg', '');
             
             const [memRes, commMemRes, commNamesRes] = await Promise.all([
-               fetch('https://theunitedstates.io/congress-legislators/legislators-current.json', { headers: { 'User-Agent': 'LegislativeTracker/1.0' }}),
-               fetch('https://theunitedstates.io/congress-legislators/committee-membership-current.json', { headers: { 'User-Agent': 'LegislativeTracker/1.0' }}),
-               fetch('https://theunitedstates.io/congress-legislators/committees-current.json', { headers: { 'User-Agent': 'LegislativeTracker/1.0' }})
+               fetch('https://raw.githubusercontent.com/unitedstates/congress-legislators/gh-pages/legislators-current.json', { headers: { 'User-Agent': 'LegislativeTracker/1.0' }}),
+               fetch('https://raw.githubusercontent.com/unitedstates/congress-legislators/gh-pages/committee-membership-current.json', { headers: { 'User-Agent': 'LegislativeTracker/1.0' }}),
+               fetch('https://raw.githubusercontent.com/unitedstates/congress-legislators/gh-pages/committees-current.json', { headers: { 'User-Agent': 'LegislativeTracker/1.0' }})
             ]);
 
             if (memRes.ok) {
                const members = await memRes.json();
                const fed = members.find(m => m.id?.bioguide === bioguideId);
                if (fed && fed.terms && fed.terms.length > 0) {
-                  const latestTerm = fed.terms[fed.terms.length - 1];
-                  if (latestTerm.address) {
-                     osData.contactDetails.push({ type: 'Capitol Office', value: latestTerm.address });
+                  let address, phone, url, contact_form;
+                  // Loop backwards through terms to find the most recent valid values
+                  for (let i = fed.terms.length - 1; i >= 0; i--) {
+                     if (!address && fed.terms[i].address) address = fed.terms[i].address;
+                     if (!phone && fed.terms[i].phone) phone = fed.terms[i].phone;
+                     if (!url && fed.terms[i].url) url = fed.terms[i].url;
+                     if (!contact_form && fed.terms[i].contact_form) contact_form = fed.terms[i].contact_form;
                   }
-                  if (latestTerm.phone) {
-                     osData.contactDetails.push({ type: 'Voice', value: latestTerm.phone });
-                  }
-                  if (latestTerm.url) {
-                     osData.links.push({ url: latestTerm.url, note: 'Official Website' });
-                  }
-                  if (latestTerm.contact_form) {
-                     osData.links.push({ url: latestTerm.contact_form, note: 'Contact Web Form' });
-                  }
+                  
+                  if (address) osData.contactDetails.push({ type: 'Capitol Office', value: address });
+                  if (phone) osData.contactDetails.push({ type: 'Voice', value: phone });
+                  if (url) osData.links.push({ url: url, note: 'Official Website' });
+                  if (contact_form) osData.links.push({ url: contact_form, note: 'Contact Web Form' });
                }
             }
 
