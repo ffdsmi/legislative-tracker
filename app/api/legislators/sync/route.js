@@ -120,7 +120,10 @@ export async function POST() {
               district: String(sp.district || ''),
               state: sp.state,
               imageUrl: imageUrl,
-              sponsoredBillIds: Array.from(sp.bill_ids)
+              sponsoredBillIds: Array.from(sp.bill_ids),
+              ballotpedia: sp.ballotpedia || null,
+              openSecretsId: sp.opensecrets_id || null,
+              voteSmartId: sp.votesmart_id || null
             };
             
             if (sp.bioguide_id || resolvedCache[sp.people_id]?.apiChecked) {

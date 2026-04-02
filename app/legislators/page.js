@@ -294,42 +294,118 @@ export default function LegislatorsPage() {
             {detailsLoading ? (
               <div style={{ textAlign: 'center', padding: 'var(--space-8)' }}>Loading details...</div>
             ) : legDetails && !legDetails.error && legDetails.legislator ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+              <div className="stat-card-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(250px, 1fr) 1.5fr', gap: 'var(--space-6)' }}>
                 
-                {/* Committees */}
-                {legDetails.legislator.committeeAssignments?.length > 0 && (
-                  <div>
-                    <h3 style={{ fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: 'var(--space-2)' }}>Committees</h3>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                      {legDetails.legislator.committeeAssignments.map((c, i) => (
-                        <span key={i} className="badge badge-outline">{c}</span>
-                      ))}
-                    </div>
+                {/* Left Column: Context & Contacts */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+                  
+                  {/* Contact Information (Hydrated) */}
+                  <div className="card" style={{ padding: 'var(--space-4)', backgroundColor: 'var(--bg-tertiary)' }}>
+                    <h3 style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: 'var(--space-3)' }}>Contact Details</h3>
+                    {legDetails.osData?.contactDetails?.length > 0 ? (
+                      <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                        {legDetails.osData.contactDetails.map((contact, i) => (
+                          <li key={i} style={{ fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <strong style={{ color: 'var(--text-primary)' }}>{contact.note || contact.type}</strong>
+                            {contact.value.includes('@') ? (
+                              <a href={`mailto:${contact.value}`} style={{ color: 'var(--color-primary)' }}>{contact.value}</a>
+                            ) : (
+                              <span style={{ color: 'var(--text-secondary)', whiteSpace: 'pre-line' }}>{contact.value}</span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Missing Capitol API contact records.</div>
+                    )}
+                    
+                    {legDetails.osData?.links?.length > 0 && (
+                      <div style={{ display: 'flex', gap: '8px', marginTop: 'var(--space-4)', flexWrap: 'wrap' }}>
+                        {legDetails.osData.links.map((lnk, i) => (
+                          <a key={i} href={lnk.url} target="_blank" rel="noreferrer" className="badge badge-outline" style={{ textDecoration: 'none' }}>
+                            {lnk.note || new URL(lnk.url).hostname.replace('www.', '')}
+                          </a>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
 
-                {/* Sponsored Bills */}
-                <div>
-                  <h3 style={{ fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: 'var(--space-2)' }}>
-                    Sponsored Bills ({legDetails.sponsoredBills?.length || 0})
-                  </h3>
-                  {legDetails.sponsoredBills?.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {legDetails.sponsoredBills.map(bill => (
-                        <Link key={bill.id} href={`/bills/${bill.id}`} className="card interactive" style={{ padding: 'var(--space-3)', display: 'block', textDecoration: 'none' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{bill.number}</span>
-                            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{new Date(bill.statusDate).toLocaleDateString()}</span>
+                  {/* Committee Assignments (Hydrated) */}
+                  <div>
+                    <h3 style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: 'var(--space-3)' }}>Committee Assignments</h3>
+                    {legDetails.osData?.roles?.filter(r => r.type === 'committee').length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {legDetails.osData.roles.filter(r => r.type === 'committee').map((role, i) => (
+                          <div key={i} style={{ fontSize: '13px', padding: 'var(--space-2) var(--space-3)', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-sm)', borderLeft: '3px solid var(--border-color)' }}>
+                            {role.org_classification !== 'committee' && role.org_classification ? `${role.org_classification} / ` : ''}{role.custom_role || 'Member'} - {role.org_name || 'Committee'}
                           </div>
-                          <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-                            {bill.title.length > 80 ? bill.title.substring(0, 80) + '...' : bill.title}
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={{ color: 'var(--text-muted)', fontSize: '14px' }}>No tracked bills sponsored yet.</div>
-                  )}
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>No active committees detected via OpenStates API.</div>
+                    )}
+                  </div>
+
+                  {/* Staffers Block (Premium/Future) */}
+                  <div>
+                     <h3 style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: 'var(--space-3)' }}>Staff Contacts</h3>
+                     <div style={{ border: '1px dashed var(--border-color)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)', opacity: 0.6, cursor: 'not-allowed' }}>
+                       <div style={{ fontSize: '13px', color: 'var(--text-primary)', marginBottom: '4px' }}><strong>Chief of Staff / Scheduler</strong></div>
+                       <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Staffer directories require premium vendor integrations (e.g., KnowWho). This block is reserved for Phase 2 data expansions.</div>
+                     </div>
+                  </div>
+
+                </div>
+
+                {/* Right Column: Intelligence & Activity */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+                  
+                  {/* External Intelligence (LegiScan Sourced) */}
+                  <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+                    {legDetails.legislator.ballotpedia && (
+                      <a href={`https://ballotpedia.org/${legDetails.legislator.ballotpedia}`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm" style={{ padding: '4px 12px', fontSize: '12px' }}>
+                        View on Ballotpedia ↗
+                      </a>
+                    )}
+                    {legDetails.legislator.openSecretsId && (
+                      <a href={`https://www.opensecrets.org/members-of-congress/summary?cid=${legDetails.legislator.openSecretsId}`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm" style={{ padding: '4px 12px', fontSize: '12px' }}>
+                        OpenSecrets Data ↗
+                      </a>
+                    )}
+                    {legDetails.legislator.voteSmartId && (
+                      <a href={`https://justfacts.votesmart.org/candidate/${legDetails.legislator.voteSmartId}`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm" style={{ padding: '4px 12px', fontSize: '12px' }}>
+                        VoteSmart History ↗
+                      </a>
+                    )}
+                  </div>
+
+                  {/* Sponsored Bills */}
+                  <div>
+                    <h3 style={{ fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: 'var(--space-3)' }}>
+                      Tracked Legislation ({legDetails.sponsoredBills?.length || 0})
+                    </h3>
+                    {legDetails.sponsoredBills?.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {legDetails.sponsoredBills.map(bill => (
+                          <Link key={bill.id} href={`/bills/${bill.id}`} className="card interactive" style={{ padding: 'var(--space-3)', display: 'block', textDecoration: 'none', borderLeft: '3px solid var(--color-primary)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                              <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '14px' }}>{bill.number}</span>
+                              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{new Date(bill.statusDate).toLocaleDateString()}</span>
+                            </div>
+                            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                              {bill.title.length > 100 ? bill.title.substring(0, 100) + '...' : bill.title}
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="empty-state" style={{ padding: 'var(--space-4)' }}>
+                        <span style={{ fontSize: '20px' }} aria-hidden="true">📄</span>
+                        <p style={{ marginTop: 'var(--space-2)', fontSize: '13px' }}>No tracked bills sponsored yet.</p>
+                      </div>
+                    )}
+                  </div>
+
                 </div>
 
               </div>

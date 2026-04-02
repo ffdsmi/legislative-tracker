@@ -18,7 +18,35 @@ export async function GET(req) {
       const leg = await getLegislator(session.workspaceId, id);
       if (!leg) return NextResponse.json({ error: 'Not found' }, { status: 404 });
       const bills = await getLegislatorBills(session.workspaceId, id);
-      return NextResponse.json({ legislator: leg, sponsoredBills: bills.map(b => ({ id: b.id, number: b.number, title: b.title, statusDate: b.statusDate })) });
+      
+      // Dynamic Hydration via OpenStates
+      let osData = null;
+      const settings = await getSettings(session.workspaceId);
+      if (settings?.openStatesApiKey && leg.state && leg.state !== 'US') {
+        try {
+          const url = `https://v3.openstates.org/people?jurisdiction=${leg.state}&name=${encodeURIComponent(leg.name)}&include=other_names&include=links&include=sources&include=offices`; // Include rich expansions if supported by V3, or just fetch base.
+          const osRes = await fetch(url, { headers: { 'X-API-KEY': settings.openStatesApiKey }});
+          if (osRes.ok) {
+            const data = await osRes.json();
+            if (data?.results?.length > 0) {
+              const person = data.results[0];
+              osData = {
+                contactDetails: person.contact_details || [],
+                links: person.links || [],
+                roles: person.current_roles || []
+              };
+            }
+          }
+        } catch (e) {
+          console.error("Hydration Error:", e);
+        }
+      }
+
+      return NextResponse.json({ 
+        legislator: leg, 
+        sponsoredBills: bills.map(b => ({ id: b.id, number: b.number, title: b.title, statusDate: b.statusDate })),
+        osData
+      });
     }
 
     const filters = {};
