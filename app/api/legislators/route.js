@@ -37,7 +37,9 @@ export async function GET(req) {
                 roles: person.current_roles || []
               };
             }
-          }
+        } catch (e) {
+          console.error("OS Hydration Error:", e);
+        }
       } else if (leg.state === 'US' && leg.imageUrl?.includes('bioguide')) {
          // Leverage the open-source @unitedstates project (GovTrack) dataset for perfect Federal hydration, bypassing Congress.gov API limits and missing committee schemas. No API key required.
          try {
