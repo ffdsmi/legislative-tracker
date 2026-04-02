@@ -20,17 +20,6 @@ export default function RegulationDetailPage() {
         const found = data.find(r => r.id === id);
         if (found) {
           setRule(found);
-        } else if (id === 'NCUA-2026-0014') {
-          // Demo fallback for the mock alert on the dashboard
-          setRule({
-            id: 'NCUA-2026-0014',
-            title: 'Fidelity Bonds for Corporate Credit Unions',
-            agency: 'NCUA',
-            type: 'Proposed Rule',
-            status: 'Open for Comment',
-            commentEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-            documentUrl: 'https://www.regulations.gov/document/NCUA-2026-0014'
-          });
         } else {
           setError('Regulatory document not found.');
         }

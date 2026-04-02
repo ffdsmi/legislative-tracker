@@ -295,14 +295,6 @@ export default function DashboardPage() {
           </div>
           {alerts.length > 0 ? (
             <div className="alert-list">
-              {/* Mock Regulatory Alert */}
-              <Link href="/regulations/NCUA-2026-0014" className="alert-item unread" style={{ textDecoration: 'none', color: 'inherit' }}>
-                <span className="alert-icon" aria-hidden="true" style={{ backgroundColor: '#ecfdf5', color: '#059669', borderColor: '#a7f3d0' }}>⚖️</span>
-                <div>
-                  <strong>NCUA-2026-0014: Proposed Rule Published</strong>
-                  <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 2 }}>Fidelity Bonds for Corporate Credit Unions</p>
-                </div>
-              </Link>
               {alerts.map((alert) => {
                 const regMatchId = alert.title ? alert.title.split(':')[0] : '';
                 const href = alert.billId ? `/bills/${alert.billId}` 
