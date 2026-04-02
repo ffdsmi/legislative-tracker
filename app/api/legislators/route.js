@@ -38,37 +38,60 @@ export async function GET(req) {
               };
             }
           }
-        } catch (e) {
-          console.error("OS Hydration Error:", e);
-        }
-      } else if (settings?.congressApiKey && leg.state === 'US' && leg.imageUrl?.includes('bioguide')) {
-         // Congress.gov Fallback for Federal Legislators
+      } else if (leg.state === 'US' && leg.imageUrl?.includes('bioguide')) {
+         // Leverage the open-source @unitedstates project (GovTrack) dataset for perfect Federal hydration, bypassing Congress.gov API limits and missing committee schemas. No API key required.
          try {
             const bioguideId = leg.imageUrl.split('/').pop().replace('.jpg', '');
-            const url = `https://api.congress.gov/v3/member/${bioguideId}?api_key=${settings.congressApiKey}&format=json`;
-            const cRes = await fetch(url);
-            if (cRes.ok) {
-              const data = await cRes.json();
-              if (data?.member) {
-                 const m = data.member;
-                 
-                 // Map to OS Format for the UI
-                 if (m.addressInformation) {
-                    osData.contactDetails.push({ 
-                       type: 'Capitol Office', 
-                       value: `${m.addressInformation.officeAddress}\n${m.addressInformation.city}, DC ${m.addressInformation.officeZip}` 
-                    });
-                    if (m.addressInformation.phoneNumber) {
-                        osData.contactDetails.push({ type: 'Voice', value: m.addressInformation.phoneNumber });
-                    }
-                 }
-                 if (m.officialWebsiteUrl) {
-                    osData.links.push({ url: m.officialWebsiteUrl, note: 'Official Website' });
-                 }
-              }
+            
+            const [memRes, commMemRes, commNamesRes] = await Promise.all([
+               fetch('https://theunitedstates.io/congress-legislators/legislators-current.json', { headers: { 'User-Agent': 'LegislativeTracker/1.0' }}),
+               fetch('https://theunitedstates.io/congress-legislators/committee-membership-current.json', { headers: { 'User-Agent': 'LegislativeTracker/1.0' }}),
+               fetch('https://theunitedstates.io/congress-legislators/committees-current.json', { headers: { 'User-Agent': 'LegislativeTracker/1.0' }})
+            ]);
+
+            if (memRes.ok) {
+               const members = await memRes.json();
+               const fed = members.find(m => m.id?.bioguide === bioguideId);
+               if (fed && fed.terms && fed.terms.length > 0) {
+                  const latestTerm = fed.terms[fed.terms.length - 1];
+                  if (latestTerm.address) {
+                     osData.contactDetails.push({ type: 'Capitol Office', value: latestTerm.address });
+                  }
+                  if (latestTerm.phone) {
+                     osData.contactDetails.push({ type: 'Voice', value: latestTerm.phone });
+                  }
+                  if (latestTerm.url) {
+                     osData.links.push({ url: latestTerm.url, note: 'Official Website' });
+                  }
+                  if (latestTerm.contact_form) {
+                     osData.links.push({ url: latestTerm.contact_form, note: 'Contact Web Form' });
+                  }
+               }
+            }
+
+            if (commMemRes.ok && commNamesRes.ok) {
+               const memberships = await commMemRes.json();
+               const committeeMaster = await commNamesRes.json();
+               
+               const myCommitteeIds = [];
+               for (const [commId, roster] of Object.entries(memberships)) {
+                  if (roster.find(m => m.bioguide === bioguideId)) {
+                     myCommitteeIds.push(commId);
+                  }
+               }
+
+               const commMap = {};
+               for (const c of committeeMaster) {
+                  if (c.thomas_id) commMap[c.thomas_id] = c.name;
+               }
+
+               for (const cid of myCommitteeIds) {
+                  const name = commMap[cid] || cid;
+                  osData.roles.push({ type: 'committee', name: name });
+               }
             }
          } catch(e) {
-            console.error("Congress Hydration Error:", e);
+            console.error("Federal Hydration Error:", e);
          }
       }
 
