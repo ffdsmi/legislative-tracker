@@ -296,22 +296,27 @@ export default function DashboardPage() {
           {alerts.length > 0 ? (
             <div className="alert-list">
               {/* Mock Regulatory Alert */}
-              <div className="alert-item unread">
+              <Link href="/regulations" className="alert-item unread" style={{ textDecoration: 'none', color: 'inherit' }}>
                 <span className="alert-icon" aria-hidden="true" style={{ backgroundColor: '#ecfdf5', color: '#059669', borderColor: '#a7f3d0' }}>⚖️</span>
                 <div>
                   <strong>NCUA-2026-0014: Proposed Rule Published</strong>
                   <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 2 }}>Fidelity Bonds for Corporate Credit Unions</p>
                 </div>
-              </div>
-              {alerts.map((alert) => (
-                <div key={alert.id} className={`alert-item ${alert.read ? '' : 'unread'}`}>
-                  <span className="alert-icon" aria-hidden="true">{alert.type === 'change' ? '📝' : '🔑'}</span>
-                  <div>
-                    <strong>{alert.title}</strong>
-                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 2 }}>{alert.message}</p>
-                  </div>
-                </div>
-              ))}
+              </Link>
+              {alerts.map((alert) => {
+                const href = alert.billId ? `/bills/${alert.billId}` : alert.type === 'regulatory' ? '/regulations' : '/alerts';
+                const icon = alert.type === 'regulatory' ? '⚖️' : alert.type === 'change' ? '📝' : '🔑';
+                
+                return (
+                  <Link key={alert.id} href={href} className={`alert-item ${alert.read ? '' : 'unread'}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <span className="alert-icon" aria-hidden="true">{icon}</span>
+                    <div>
+                      <strong>{alert.title}</strong>
+                      <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 2 }}>{alert.message}</p>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           ) : (
             <div className="empty-state">
