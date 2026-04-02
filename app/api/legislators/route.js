@@ -90,7 +90,7 @@ export async function GET(req) {
 
                for (const cid of myCommitteeIds) {
                   const name = commMap[cid] || cid;
-                  osData.roles.push({ type: 'committee', name: name });
+                  osData.roles.push({ type: 'committee', org_name: name });
                }
             }
          } catch(e) {
