@@ -37,6 +37,7 @@ export async function GET(req) {
                 roles: person.current_roles || []
               };
             }
+          }
         } catch (e) {
           console.error("OS Hydration Error:", e);
         }
