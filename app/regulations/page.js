@@ -215,15 +215,9 @@ function RegulationsContent() {
                         </div>
                       </td>
                       <td>
-                        {rule.documentUrl ? (
-                          <a href={rule.documentUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm" aria-label={`View docket ${rule.id} on regulations.gov`}>
-                            View Details
-                          </a>
-                        ) : (
-                          <button className="btn btn-secondary btn-sm" disabled>
-                            No Details
-                          </button>
-                        )}
+                        <Link href={`/regulations/${rule.id}`} className="btn btn-secondary btn-sm" aria-label={`View docket ${rule.id} details`}>
+                          View Details
+                        </Link>
                       </td>
                     </tr>
                   )

@@ -296,7 +296,7 @@ export default function DashboardPage() {
           {alerts.length > 0 ? (
             <div className="alert-list">
               {/* Mock Regulatory Alert */}
-              <Link href="/regulations?search=NCUA-2026-0014" className="alert-item unread" style={{ textDecoration: 'none', color: 'inherit' }}>
+              <Link href="/regulations/NCUA-2026-0014" className="alert-item unread" style={{ textDecoration: 'none', color: 'inherit' }}>
                 <span className="alert-icon" aria-hidden="true" style={{ backgroundColor: '#ecfdf5', color: '#059669', borderColor: '#a7f3d0' }}>⚖️</span>
                 <div>
                   <strong>NCUA-2026-0014: Proposed Rule Published</strong>
@@ -306,7 +306,7 @@ export default function DashboardPage() {
               {alerts.map((alert) => {
                 const regMatchId = alert.title ? alert.title.split(':')[0] : '';
                 const href = alert.billId ? `/bills/${alert.billId}` 
-                           : alert.type === 'regulatory' ? `/regulations${regMatchId ? `?search=${regMatchId}` : ''}` 
+                           : alert.type === 'regulatory' ? `/regulations${regMatchId ? `/${regMatchId}` : ''}` 
                            : '/alerts';
                            
                 const icon = alert.type === 'regulatory' ? '⚖️' : alert.type === 'change' ? '📝' : '🔑';
