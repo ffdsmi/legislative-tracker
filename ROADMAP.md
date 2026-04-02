@@ -140,9 +140,20 @@ API keys are managed through an in-app Settings page and stored in the local dat
 
 | Deliverable | Status | Description |
 |-------------|--------|-------------|
-| UI Scaffolding | 🔄 In Progress | New dashboard feeds, Regulations tab, and data tables mapping NCUA/CFPB metadata. |
-| Regulations.gov Adapter | ⬜ Todo | Backend connector pulling structured rulemakings directly from the federal API. |
-| Stakeholder Feed Convergence | ⬜ Todo | Polymorphic Dashboard feed rendering state bills alongside regulatory open comment periods. |
+| UI Scaffolding | ✅ Done | New dashboard feeds, Regulations tab, and data tables mapping NCUA/CFPB metadata. |
+| Regulations.gov Adapter | ✅ Done | Backend connector pulling actionable documents from the federal API. |
+| Stakeholder Feed Convergence | ✅ Done | Polymorphic Dashboard feed rendering state bills alongside regulatory open comment periods. |
+| Docket Timeline Engine | ⬜ Todo | Continuous collector to poll for newly published Federal Register documents within a docket lifecycle (Advance Notice → Proposed → Final) avoiding heavy PDF diffing. |
+
+---
+
+### Phase 7 — Unified Tracking & Deep Analysis
+
+| Deliverable | Status | Description |
+|-------------|--------|-------------|
+| Unified Regulatory Detail Pages | ⬜ Todo | Elevate federal rules into the same deep-dive Explorer engine used for State Bills. |
+| Regulatory Annotation & Markup | ⬜ Todo | Enable semantic highlighting, commenting, and redlining on Federal Register text. |
+| Universal Advocacy Packet | ⬜ Todo | Generate customized PDFs containing analysis of both state bills and federal regulations. |
 
 ---
 
